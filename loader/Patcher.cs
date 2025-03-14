@@ -1,9 +1,8 @@
 using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices.JavaScript;
-using System.Runtime.InteropServices;
+using System.Reflection;
 using System.IO.Compression;
 using Mono.Cecil;
 using MonoMod;
@@ -13,7 +12,7 @@ public partial class Patcher
 {
 
     [JSExport]
-    internal static async Task<bool> PatchCeleste()
+    internal static async Task<bool> PatchCeleste(bool installEverest)
     {
         try
         {
@@ -31,7 +30,7 @@ public partial class Patcher
             else if (File.Exists("/libsdl/Celeste.exe"))
             {
                 patcher = new("/libsdl/Celeste.exe");
-                patcher.installEverest = true;
+                patcher.installEverest = installEverest;
             }
             else
             {
@@ -142,6 +141,22 @@ public partial class Patcher
 
 
         ModuleDefinition wasmMod = ModuleDefinition.ReadModule("/bin/Celeste.Wasm.mm.dll");
+        if (!installEverest)
+        {
+            var ignore = wasmMod.ImportReference(typeof(MonoMod.MonoModIgnore).GetConstructor([]));
+			Console.WriteLine($"IGNORING: {ignore}");
+            foreach (var type in wasmMod.GetTypes())
+            {
+                if (type.Namespace.StartsWith("Celeste.Mod"))
+                    type.CustomAttributes.Add(new(ignore));
+            }
+			foreach (var type in wasmMod.GetTypes())
+			{
+				if (type.Namespace == "Celeste.Wasm.NonEverestOnly")
+					type.CustomAttributes.Clear();
+			}
+		}
+
         using (MonoModder modder = new()
         {
             Module = Module,
@@ -154,12 +169,12 @@ public partial class Patcher
 
             modder.Log("Installing WASM patches");
             modder.MapDependencies();
-			modder.DependencyMap[modder.Module].Add(wasmMod);
+            modder.DependencyMap[modder.Module].Add(wasmMod);
 
             modder.AutoPatch();
         }
 
-		Module.AssemblyReferences.Add(wasmMod.Assembly.Name);
+        Module.AssemblyReferences.Add(wasmMod.Assembly.Name);
     }
 
     public void write(string path)

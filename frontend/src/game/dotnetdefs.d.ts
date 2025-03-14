@@ -80,6 +80,7 @@ interface DotnetHostBuilder {
     withEnvironmentVariables(variables: {
         [i: string]: string;
     }): DotnetHostBuilder;
+	withRuntimeOptions(runtimeOptions: string[]): DotnetHostBuilder;
     /**
      * Sets the "current directory" for the "process" on the virtual file system.
      */

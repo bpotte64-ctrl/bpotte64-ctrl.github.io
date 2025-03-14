@@ -8,7 +8,7 @@ import { epoxyFetch, EpxTcpWs, EpxWs, getWispUrl } from "../epoxy";
 import { steamState } from "../steam";
 
 export type Log = { color: string, log: string };
-export const TIMEBUF_SIZE = 10;
+export const TIMEBUF_SIZE = 60;
 export const gameState: Stateful<{
 	ready: boolean,
 	initting: boolean,
@@ -237,7 +237,19 @@ export async function preInit() {
 	const runtime = await dotnet.withConfig({
 		pthreadPoolInitialSize: 24,
 		// pthreadPoolUnusedSize: 512,
-	}).create();
+	}).withRuntimeOptions([
+		// jit functions quickly and jit more functions
+		`--jiterpreter-minimum-trace-hit-count=${500}`,
+		// monitor jitted functions for less time
+		`--jiterpreter-trace-monitoring-period=${100}`,
+		// reject less funcs
+		`--jiterpreter-trace-monitoring-max-average-penalty=${150}`,
+		// increase jit function limits
+		`--jiterpreter-wasm-bytes-limit=${64 * 1024 * 1024}`,
+		`--jiterpreter-table-size=${16 * 1024}`,
+		// print jit stats
+		`--jiterpreter-stats-enabled`
+	]).create();
 
 	runtime.setModuleImports("SteamJS", SteamJS);
 	runtime.setModuleImports("JsSplash", JsSplash);
@@ -302,6 +314,13 @@ export async function preInit() {
 	const config = runtime.getConfig();
 	exports = await runtime.getAssemblyExports(config.mainAssemblyName!);
 
+	runtime.setModuleImports("Celeste.js", {
+		requestframe: (frametime: number) => {
+			gameState.timebuf.add(frametime);
+			//return new Promise(requestAnimationFrame);
+			return new Promise(r=>queueMicrotask(r as any));
+		}
+	});
 
 	// TODO: replace with native openssl
 	runtime.setModuleImports("interop.js", {
@@ -352,7 +371,7 @@ export async function preInit() {
 	gameState.ready = true;
 };
 
-export async function PatchCeleste() {
+export async function PatchCeleste(installEverest: boolean) {
 	try {
 		await (await (await rootFolder.getDirectoryHandle("Celeste")).getDirectoryHandle("Everest")).getFileHandle("Celeste.Mod.mm.dll", { create: false });
 	} catch {
@@ -364,7 +383,7 @@ export async function PatchCeleste() {
 		await exports.Patcher.ExtractEverest();
 	}
 
-	await exports.Patcher.PatchCeleste();
+	await exports.Patcher.PatchCeleste(installEverest);
 }
 
 export async function initSteam(username: string | null, password: string | null, qr: boolean) {
@@ -394,13 +413,14 @@ export async function play() {
 	// run some frames for seamless transition
 	for (let i = 0; i < SEAMLESSCOUNT; i++) {
 		console.debug(`SeamlessInit${i}...`);
-		if (!await exports.CelesteLoader.MainLoop()) throw new Error("CelesteLoader.MainLoop() Failed!");
+		if (!await exports.CelesteLoader.RunAFrame()) throw new Error("CelesteLoader.RunOneFrame() Failed!");
 	}
 
 	const after = performance.now();
 	console.debug(`Init : ${(after - before).toFixed(2)}ms`);
 	gameState.initting = false;
 
+	/*
 	const main = async () => {
 		const before = performance.now();
 		const ret = await exports.CelesteLoader.MainLoop();
@@ -423,4 +443,15 @@ export async function play() {
 		requestAnimationFrame(main);
 	}
 	requestAnimationFrame(main);
+	*/
+
+   	await exports.CelesteLoader.MainLoop();
+
+	console.debug("Cleanup...");
+
+	gameState.timebuf.clear();
+
+	await exports.CelesteLoader.Cleanup();
+	gameState.ready = false;
+	gameState.playing = false;
 }

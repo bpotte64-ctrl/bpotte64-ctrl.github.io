@@ -377,8 +377,10 @@ export const Patch: Component<{
 	"on:done": () => void,
 }, {
 	patching: boolean,
+	everest: boolean,
 }> = function() {
 	this.patching = false;
+	this.everest = false;
 	this.css = `
 		display: flex;
 		flex-direction: column;
@@ -391,7 +393,7 @@ export const Patch: Component<{
 	`
 	const patch = async () => {
 		this.patching = true;
-		await PatchCeleste();
+		await PatchCeleste(this.everest);
 		this.patching = false;
 		this["on:done"]();
 	}
@@ -399,7 +401,7 @@ export const Patch: Component<{
 	return <div>
 		<p>We're going to patch Celeste with MonoMod for neccesary webassembly fixes. You also have the option to install the Everest Mod Loader, but it will take longer to install</p>
 		<div>
-			<input type="checkbox" id="installEverest" />
+			<input type="checkbox" id="installEverest" bind:checked={use(this.everest)} />
 			<label for="installEverest">Install Everest Mod Loader?</label>
 		</div>
 

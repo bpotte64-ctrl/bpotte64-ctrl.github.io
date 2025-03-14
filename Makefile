@@ -41,13 +41,13 @@ deps: statics FNA MonoMod NLua SteamKit2.WASM emsdk
 
 build: deps
 	pnpm i
-	rm -r frontend/public/_framework loader/bin/Release/net9.0/publish/wwwroot/_framework || true
+	rm -r frontend/public/_framework loader/bin/Release/net10.0/publish/wwwroot/_framework || true
 #
 	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet restore loader $(DOTNETFLAGS)
 	bash replaceruntime.sh
 	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet publish loader -c Release $(DOTNETFLAGS)
 #
-	cp -r loader/bin/Release/net9.0/publish/wwwroot/_framework frontend/public/
+	cp -r loader/bin/Release/net10.0/publish/wwwroot/_framework frontend/public/
 	# emscripten sucks
 	sed -i 's/var offscreenCanvases \?= \?{};/var offscreenCanvases={};if(globalThis.window\&\&!window.TRANSFERRED_CANVAS){transferredCanvasNames=[".canvas"];window.TRANSFERRED_CANVAS=true;}/' frontend/public/_framework/dotnet.native.*.js
 
