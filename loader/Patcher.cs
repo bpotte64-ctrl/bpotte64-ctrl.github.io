@@ -7,6 +7,8 @@ using System.IO.Compression;
 using Mono.Cecil;
 using MonoMod;
 using MonoMod.RuntimeDetour.HookGen;
+using MonoMod.RuntimeDetour;
+using System.Reflection;
 
 public partial class Patcher
 {
@@ -116,12 +118,21 @@ public partial class Patcher
         }
     }
 
+    private static Assembly GetExecutingAssembly(Func<Assembly> orig)
+    {
+        var origVal = orig();
+        Console.WriteLine($"GetExecutingAssembly {origVal}");
+        return origVal;
+    }
+
     public void patch()
     {
         if (installEverest)
         {
             string everestPath = "/libsdl/Celeste/Everest/Celeste.Mod.mm.dll";
             string mmhookPath = "/libsdl/Celeste/Everest/MMHOOK_Celeste.dll";
+
+            Hook hook = new Hook(typeof(Assembly).GetMethod("GetExecutingAssembly"), GetExecutingAssembly);
 
             RunMonoMod(Module, [ModuleDefinition.ReadModule(everestPath)], true, modder =>
             {

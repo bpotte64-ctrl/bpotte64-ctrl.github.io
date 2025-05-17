@@ -45,7 +45,6 @@
 		<EmccCompileOptimizationFlag>-O3</EmccCompileOptimizationFlag>
 		<EmccEnvironment>web,worker</EmccEnvironment>
 
-		<_WasmShouldAOT>true</_WasmShouldAOT>
 		<RunAOTCompilation>true</RunAOTCompilation>
 	</PropertyGroup>
 
@@ -122,12 +121,22 @@
 		<!--<Message Importance="High" Text="AOT compiling assemblies: @(_WasmAssembliesInternal)" />-->
 		<ItemGroup>
 			<_OldWasmAssembliesInternal Include="@(_WasmAssembliesInternal)" />
+
 			<!-- needed for icalls -->
 			<_FilteredWasmAssembliesInternal Include="@(_WasmAssembliesInternal)"
 				Condition="$([System.String]::Copy('%(Identity)').Contains('System.Private.CoreLib'))" />
+
 			<!-- attempt to improve fps -->
 			<_FilteredWasmAssembliesInternal Include="@(_WasmAssembliesInternal)"
 				Condition="$([System.String]::Copy('%(Identity)').Contains('FNA'))" />
+
+			<!-- attempt to improve patching speed 
+			<_FilteredWasmAssembliesInternal Include="@(_WasmAssembliesInternal)"
+				Condition="$([System.String]::Copy('%(Identity)').Contains('Mono.Cecil'))" />
+			<_FilteredWasmAssembliesInternal Include="@(_WasmAssembliesInternal)"
+				Condition="$([System.String]::Copy('%(Identity)').Contains('MonoMod'))" />
+-->
+
 			<_WasmAssembliesInternal Remove="@(_WasmAssembliesInternal)" />
 		</ItemGroup>
 		<!-- msbuild evaluates the remove at the end of the block so this needs to be separate -->
@@ -137,6 +146,9 @@
 		<!--<Message Importance="High" Text="AOT compiling assemblies filtered: @(_WasmAssembliesInternal)" />-->
 	</Target>
 	<Target Name="HackAOTCompilation2" BeforeTargets="_WasmStripAOTAssemblies">
+		<PropertyGroup>
+			<RunAOTCompilation>true</RunAOTCompilation>
+		</PropertyGroup>
 		<ItemGroup>
 			<_WasmAssembliesInternal Remove="@(_WasmAssembliesInternal)" />
 		</ItemGroup>

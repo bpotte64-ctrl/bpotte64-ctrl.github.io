@@ -1,0 +1,460 @@
+diff --git a/src/mono/browser/runtime/driver.c b/src/mono/browser/runtime/driver.c
+index 2a1d5b1db..088a0c638 100644
+--- a/src/mono/browser/runtime/driver.c
++++ b/src/mono/browser/runtime/driver.c
+@@ -432,6 +432,7 @@ mono_wasm_profiler_init_browser (const char *desc)
+ 
+ #ifdef ENABLE_LOG_PROFILER
+ 
++/*
+ void mono_profiler_init_log (const char *desc);
+ 
+ EMSCRIPTEN_KEEPALIVE void
+@@ -439,6 +440,7 @@ mono_wasm_profiler_init_log (const char *desc)
+ {
+ 	mono_profiler_init_log (desc);
+ }
++*/
+ 
+ #endif
+ 
+@@ -570,4 +572,4 @@ mono_wasm_read_as_bool_or_null_unsafe (PVOLATILE(MonoObject) obj) {
+ 	end:
+ 	MONO_EXIT_GC_UNSAFE;
+ 	return result;
+-}
+\ No newline at end of file
++}
+diff --git a/src/mono/browser/runtime/jiterpreter-trace-generator.ts b/src/mono/browser/runtime/jiterpreter-trace-generator.ts
+index 4db54e579..e02bb9d74 100644
+--- a/src/mono/browser/runtime/jiterpreter-trace-generator.ts
++++ b/src/mono/browser/runtime/jiterpreter-trace-generator.ts
+@@ -1,6 +1,7 @@
+ // Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
++import WasmEnableThreads from "consts:wasmEnableThreads";
+ import { MonoMethod } from "./types/internal";
+ import { NativePointer } from "./types/emscripten";
+ import {
+@@ -9,7 +10,7 @@ import {
+ } from "./memory";
+ import {
+     WasmOpcode, WasmSimdOpcode, WasmValtype,
+-    getOpcodeName, MintOpArgType
++    getOpcodeName, MintOpArgType, WasmAtomicOpcode
+ } from "./jiterpreter-opcodes";
+ import {
+     MintOpcode, SimdInfo,
+@@ -3953,6 +3954,20 @@ function emit_simd_4 (builder: WasmBuilder, ip: MintOpcodePtr, index: SimdIntrin
+ function emit_atomics (
+     builder: WasmBuilder, ip: MintOpcodePtr, opcode: number
+ ) {
++    if (opcode === MintOpcode.MINT_MONO_MEMORY_BARRIER) {
++        if (WasmEnableThreads) {
++            // Mono memory barriers use sync_synchronize which generates atomic.fence on clang,
++            //  provided you pass -pthread at compile time
++            builder.appendAtomic(WasmAtomicOpcode.atomic_fence);
++            // The text format and other parts of the spec say atomic.fence has no operands,
++            //  but the binary encoding contains a byte specifying whether the barrier is
++            //  sequentially consistent (0) or acquire-release (1)
++            // Mono memory barriers are sync_synchronize which is sequentially consistent.
++            builder.appendU8(0);
++        }
++        return true;
++    }
++
+     if (!builder.options.enableAtomics)
+         return false;
+ 
+diff --git a/src/mono/browser/runtime/runtime.c b/src/mono/browser/runtime/runtime.c
+index 2cf5b7605..f250a0b09 100644
+--- a/src/mono/browser/runtime/runtime.c
++++ b/src/mono/browser/runtime/runtime.c
+@@ -268,6 +268,7 @@ wasm_dl_symbol (void *handle, const char *name, char **err, void *user_data)
+ 	return NULL;
+ }
+ 
++extern int mono_wasm_fallback_interp;
+ MonoDomain *
+ mono_wasm_load_runtime_common (int debug_level, MonoLogCallback log_callback, const char *interp_opts)
+ {
+@@ -283,6 +284,7 @@ mono_wasm_load_runtime_common (int debug_level, MonoLogCallback log_callback, co
+ #endif
+ 
+ #ifdef ENABLE_AOT
++    mono_wasm_fallback_interp = 1;
+ 	monoeg_g_setenv ("MONO_AOT_MODE", "aot", 1);
+ 
+ 	// Defined in driver-gen.c
+@@ -293,6 +295,7 @@ mono_wasm_load_runtime_common (int debug_level, MonoLogCallback log_callback, co
+ 	mono_jit_set_aot_mode (MONO_AOT_MODE_LLVMONLY);
+ #endif
+ #else
++    mono_wasm_fallback_interp = 0;
+ 	mono_jit_set_aot_mode (MONO_AOT_MODE_INTERP_ONLY);
+ 
+ 	/*
+diff --git a/src/mono/browser/runtime/startup.ts b/src/mono/browser/runtime/startup.ts
+index b27364136..af193fcbc 100644
+--- a/src/mono/browser/runtime/startup.ts
++++ b/src/mono/browser/runtime/startup.ts
+@@ -369,7 +369,7 @@ async function postRunAsync (userpostRun: (() => void)[]) {
+ 
+         // create /usr/share folder which is SpecialFolder.CommonApplicationData
+         Module["FS_createPath"]("/", "usr", true, true);
+-        Module["FS_createPath"]("/", "usr/share", true, true);
++        Module["FS_createPath"]("/usr", "share", true, true);
+ 
+         // all user Module.postRun callbacks
+         userpostRun.map(fn => fn());
+diff --git a/src/mono/mono/metadata/class-setup-vtable.c b/src/mono/mono/metadata/class-setup-vtable.c
+index b2f13d72d..c5cc67398 100644
+--- a/src/mono/mono/metadata/class-setup-vtable.c
++++ b/src/mono/mono/metadata/class-setup-vtable.c
+@@ -773,6 +773,7 @@ mono_method_get_method_definition (MonoMethod *method)
+ static gboolean
+ verify_class_overrides (MonoClass *klass, MonoMethod **overrides, int onum)
+ {
++	return TRUE;
+ #ifndef ENABLE_CHECKED_BUILD
+ 	if (klass->image == mono_defaults.corlib)
+ 		return TRUE;
+diff --git a/src/mono/mono/metadata/class.c b/src/mono/mono/metadata/class.c
+index c74c5c12e..b133a578a 100644
+--- a/src/mono/mono/metadata/class.c
++++ b/src/mono/mono/metadata/class.c
+@@ -6480,6 +6480,7 @@ can_access_member (MonoClass *access_klass, MonoClass *member_klass, MonoClass*
+ gboolean
+ mono_method_can_access_field (MonoMethod *method, MonoClassField *field)
+ {
++	return TRUE;
+ 	/* FIXME: check all overlapping fields */
+ 	int can = can_access_member (method->klass, m_field_get_parent (field), NULL, mono_field_get_type_internal (field)->attrs & FIELD_ATTRIBUTE_FIELD_ACCESS_MASK);
+ 	if (!can) {
+@@ -6515,6 +6516,7 @@ mono_method_get_method_definition (MonoMethod *method)
+ gboolean
+ mono_method_can_access_method (MonoMethod *method, MonoMethod *called)
+ {
++	return TRUE;
+ 	method = mono_method_get_method_definition (method);
+ 	called = mono_method_get_method_definition (called);
+ 	return mono_method_can_access_method_full (method, called, NULL);
+@@ -6534,6 +6536,7 @@ mono_method_can_access_method (MonoMethod *method, MonoMethod *called)
+ gboolean
+ mono_method_can_access_method_full (MonoMethod *method, MonoMethod *called, MonoClass *context_klass)
+ {
++	return TRUE;
+ 	/* Wrappers are except from access checks */
+ 	if (method->wrapper_type != MONO_WRAPPER_NONE || called->wrapper_type != MONO_WRAPPER_NONE)
+ 		return TRUE;
+diff --git a/src/mono/mono/metadata/icall.c b/src/mono/mono/metadata/icall.c
+index e326e7a7b..45884c15e 100644
+--- a/src/mono/mono/metadata/icall.c
++++ b/src/mono/mono/metadata/icall.c
+@@ -5566,15 +5566,81 @@ ves_icall_System_Reflection_RuntimeModule_InternalGetTypes (MonoImage *image, Mo
+ 		MonoArrayHandle res = mono_module_get_types (image, exceptions, FALSE, error);
+ 		return_val_if_nok (error, MONO_HANDLE_CAST(MonoArray, NULL_HANDLE));
+ 
+-		int n = GUINTPTR_TO_INT (mono_array_handle_length (exceptions));
+-		MonoExceptionHandle ex = MONO_HANDLE_NEW (MonoException, NULL);
+-		for (int i = 0; i < n; ++i) {
+-			MONO_HANDLE_ARRAY_GETREF(ex, exceptions, i);
+-			if (!MONO_HANDLE_IS_NULL (ex)) {
+-				mono_error_set_exception_handle (error, ex);
++		int i;
++		MonoTableInfo *table = &image->tables [MONO_TABLE_FILE];
++
++		/* Append data from all modules in the assembly */
++		int rows = table_info_get_rows (table);
++		for (i = 0; i < rows; ++i) {
++			if (!(mono_metadata_decode_row_col (table, i, MONO_FILE_FLAGS) & FILE_CONTAINS_NO_METADATA)) {
++				MonoImage *loaded_image = mono_assembly_load_module_checked (image->assembly, i + 1, error);
++				return_val_if_nok (error, MONO_HANDLE_CAST(MonoArray, NULL_HANDLE));
++
++				if (loaded_image) {
++					append_module_types (res, exceptions, loaded_image, FALSE, error);
++					return_val_if_nok (error, MONO_HANDLE_CAST(MonoArray, NULL_HANDLE));
++				}
++			}
++		}
++
++		/* the ReflectionTypeLoadException must have all the types (Types property),
++		 * NULL replacing types which throws an exception. The LoaderException must
++		 * contain all exceptions for NULL items.
++		 */
++
++		int len = GUINTPTR_TO_INT (mono_array_handle_length (res));
++
++		int ex_count = 0;
++		GList *list = NULL;
++		MonoReflectionTypeHandle t = MONO_HANDLE_NEW (MonoReflectionType, NULL);
++		for (i = 0; i < len; i++) {
++			MONO_HANDLE_ARRAY_GETREF (t, res, i);
++
++			if (!MONO_HANDLE_IS_NULL (t)) {
++				MonoClass *klass = mono_type_get_class_internal (MONO_HANDLE_GETVAL (t, type));
++				if ((klass != NULL) && mono_class_has_failure (klass)) {
++					/* keep the class in the list */
++					list = g_list_append (list, klass);
++					/* and replace Type with NULL */
++					MONO_HANDLE_ARRAY_SETREF (res, i, NULL_HANDLE);
++				}
++			} else {
++				ex_count ++;
++			}
++		}
++
++		if (list || ex_count) {
++			GList *tmp = NULL;
++			int length = g_list_length (list) + ex_count;
++
++			MonoArrayHandle exl = mono_array_new_handle (mono_defaults.exception_class, length, error);
++			if (!is_ok (error)) {
++				g_list_free (list);
+ 				return MONO_HANDLE_CAST(MonoArray, NULL_HANDLE);
+ 			}
++			/* Types for which mono_class_get_checked () succeeded */
++			MonoExceptionHandle exc = MONO_HANDLE_NEW (MonoException, NULL);
++			for (i = 0, tmp = list; tmp; i++, tmp = tmp->next) {
++				set_class_failure_in_array (exl, i, (MonoClass*)tmp->data);
++			}
++			/* Types for which it don't */
++			for (uintptr_t j = 0; j < mono_array_handle_length (exceptions); ++j) {
++				MONO_HANDLE_ARRAY_GETREF (exc, exceptions, j);
++				if (!MONO_HANDLE_IS_NULL (exc)) {
++					g_assert (i < length);
++					MONO_HANDLE_ARRAY_SETREF (exl, i, exc);
++					i ++;
++				}
++			}
++			g_list_free (list);
++			list = NULL;
++
++			MONO_HANDLE_ASSIGN (exc, mono_get_exception_reflection_type_load_checked (res, exl, error));
++			return_val_if_nok (error, MONO_HANDLE_CAST(MonoArray, NULL_HANDLE));
++			mono_error_set_exception_handle (error, exc);
++			return MONO_HANDLE_CAST(MonoArray, NULL_HANDLE);
+ 		}
++
+ 		return res;
+ 	}
+ }
+@@ -7289,6 +7355,7 @@ ves_icall_System_Diagnostics_StackTrace_GetTrace (MonoObjectHandleOnStack ex_han
+ 	HANDLE_ON_STACK_SET (res, trace);
+ }
+ 
++extern int mono_wasm_enable_fallback_interp;
+ MonoBoolean
+ ves_icall_System_Diagnostics_StackFrame_GetFrameInfo (gint32 skip, MonoBoolean need_file_info,
+ 													  MonoObjectHandleOnStack out_method, MonoObjectHandleOnStack out_file,
+@@ -7300,8 +7367,13 @@ ves_icall_System_Diagnostics_StackFrame_GetFrameInfo (gint32 skip, MonoBoolean n
+ 	ERROR_DECL (error);
+ 
+ 	gboolean res = mono_get_runtime_callbacks ()->get_frame_info (skip, &method, &location, iloffset, native_offset);
+-	if (!res)
+-		return FALSE;
++	if (!res) {
++		mono_wasm_enable_fallback_interp = 1;
++		res = mono_get_runtime_callbacks ()->get_frame_info (skip, &method, &location, iloffset, native_offset);
++		mono_wasm_enable_fallback_interp = 0;
++		if (!res)
++			return FALSE;
++	}
+ 
+ 	if (location)
+ 		*iloffset = location->il_offset;
+diff --git a/src/mono/mono/metadata/marshal.c b/src/mono/mono/metadata/marshal.c
+index f9aa95467..214ae998e 100644
+--- a/src/mono/mono/metadata/marshal.c
++++ b/src/mono/mono/metadata/marshal.c
+@@ -367,10 +367,12 @@ mono_marshal_unlock_internal (void)
+ 	mono_marshal_unlock ();
+ }
+ 
++extern int mono_wasm_enable_fallback_interp;
+ // This is a JIT icall, it sets the pending exception (in wrapper) and return NULL on error.
+ gpointer
+ mono_delegate_to_ftnptr_impl (MonoDelegateHandle delegate, MonoError *error)
+ {
++	mono_wasm_enable_fallback_interp = 1;
+ 	gpointer result = NULL;
+ 	MonoMethod *method, *wrapper;
+ 	MonoClass *klass;
+@@ -430,6 +432,7 @@ mono_delegate_to_ftnptr_impl (MonoDelegateHandle delegate, MonoError *error)
+ leave:
+ 	if (!is_ok (error) && target_handle != 0)
+ 		mono_gchandle_free_internal (target_handle);
++	mono_wasm_enable_fallback_interp = 0;
+ 	return result;
+ }
+ 
+diff --git a/src/mono/mono/mini/interp/interp.c b/src/mono/mono/mini/interp/interp.c
+index c30162529..2b2874f4a 100644
+--- a/src/mono/mono/mini/interp/interp.c
++++ b/src/mono/mono/mini/interp/interp.c
+@@ -3305,6 +3305,7 @@ no_llvmonly_interp_method_pointer (void)
+ 	g_assert_not_reached ();
+ }
+ 
++extern int mono_wasm_enable_fallback_interp;
+ /*
+  * interp_create_method_pointer_llvmonly:
+  *
+@@ -3344,10 +3345,17 @@ interp_create_method_pointer_llvmonly (MonoMethod *method, gboolean unbox, MonoE
+ 	else
+ 		wrapper = mini_get_gsharedvt_in_sig_wrapper (sig);
+ 
+-	entry_wrapper = mono_jit_compile_method_jit_only (wrapper, error);
+-	mono_error_assertf_ok (error, "couldn't compile wrapper \"%s\" for \"%s\"",
+-			mono_method_get_name_full (wrapper, TRUE, TRUE, MONO_TYPE_NAME_FORMAT_IL),
+-			mono_method_get_name_full (method,  TRUE, TRUE, MONO_TYPE_NAME_FORMAT_IL));
++	ERROR_DECL(error2);
++	entry_wrapper = mono_jit_compile_method_jit_only (wrapper, error2);
++	if (!is_ok(error2)) {
++		mono_wasm_enable_fallback_interp = 1;
++		entry_wrapper = mono_jit_compile_method_jit_only (wrapper, error);
++		mono_wasm_enable_fallback_interp = 0;
++		mono_error_assertf_ok (error, "couldn't compile wrapper \"%s\" for \"%s\"",
++				mono_method_get_name_full (wrapper, TRUE, TRUE, MONO_TYPE_NAME_FORMAT_IL),
++				mono_method_get_name_full (method,  TRUE, TRUE, MONO_TYPE_NAME_FORMAT_IL));
++	}
++	mono_error_cleanup(error2);
+ 
+ 	if (sig->param_count > MAX_INTERP_ENTRY_ARGS) {
+ 		entry_func = (gpointer)interp_entry_general;
+diff --git a/src/mono/mono/mini/interp/jiterpreter-opcode-values.h b/src/mono/mono/mini/interp/jiterpreter-opcode-values.h
+index b0b7ac249..def845b0b 100644
+--- a/src/mono/mono/mini/interp/jiterpreter-opcode-values.h
++++ b/src/mono/mono/mini/interp/jiterpreter-opcode-values.h
+@@ -183,6 +183,7 @@ OP(MINT_THROW, ABORT_OUTSIDE_BRANCH_BLOCK_NONE)
+ OP(MINT_MOV_SRC_OFF, NORMAL)
+ OP(MINT_MOV_DST_OFF, NORMAL)
+ 
++OP(MINT_MONO_MEMORY_BARRIER, NORMAL)
+ OPRANGE(MINT_MONO_EXCHANGE_U1, MINT_MONO_EXCHANGE_I8, HIGH)
+ OPRANGE(MINT_MONO_CMPXCHG_U1, MINT_MONO_CMPXCHG_I8, HIGH)
+ 
+diff --git a/src/mono/mono/mini/interp/jiterpreter.c b/src/mono/mono/mini/interp/jiterpreter.c
+index 50c738306..fdbbee8bf 100644
+--- a/src/mono/mono/mini/interp/jiterpreter.c
++++ b/src/mono/mono/mini/interp/jiterpreter.c
+@@ -1165,6 +1165,7 @@ mono_jiterp_stelem_ref (
+ 	return 1;
+ }
+ 
++
+ // keep in sync with jiterpreter-enums.ts JiterpMember
+ enum {
+ 	JITERP_MEMBER_VT_INITIALIZED = 0,
+diff --git a/src/mono/mono/mini/interp/transform.c b/src/mono/mono/mini/interp/transform.c
+index a74e9baaf..4b86d84f7 100644
+--- a/src/mono/mono/mini/interp/transform.c
++++ b/src/mono/mono/mini/interp/transform.c
+@@ -3489,7 +3489,9 @@ interp_transform_call (TransformData *td, MonoMethod *method, MonoMethod *target
+ 	if (target_method == NULL) {
+ 		if (calli) {
+ 			CHECK_STACK_RET(td, 1, FALSE);
+-			if (method->wrapper_type != MONO_WRAPPER_NONE)
++			if (token == 0xF0F0F0F0)
++				csignature = method->signature;
++			else if (method->wrapper_type != MONO_WRAPPER_NONE)
+ 				csignature = (MonoMethodSignature *)mono_method_get_wrapper_data (method, token);
+ 			else {
+ 				csignature = mono_metadata_parse_signature_checked (image, token, error);
+@@ -9759,11 +9761,6 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
+ 	method_class_vt = mono_class_vtable_checked (imethod->method->klass, error);
+ 	return_if_nok (error);
+ 
+-	if (!method_class_vt->initialized) {
+-		mono_runtime_class_init_full (method_class_vt, error);
+-		return_if_nok (error);
+-	}
+-
+ 	MONO_PROFILER_RAISE (jit_begin, (method));
+ 
+ 	if (mono_method_signature_internal (method)->is_inflated)
+diff --git a/src/mono/mono/mini/mini-exceptions.c b/src/mono/mono/mini/mini-exceptions.c
+index 85f566553..c14a3367a 100644
+--- a/src/mono/mono/mini/mini-exceptions.c
++++ b/src/mono/mono/mini/mini-exceptions.c
+@@ -1422,6 +1422,8 @@ next:
+ 	}
+ }
+ 
++extern int mono_wasm_fallback_interp;
++extern int mono_wasm_enable_fallback_interp;
+ MonoBoolean
+ mono_get_frame_info (gint32 skip,
+ 					 MonoMethod **out_method,
+@@ -1443,7 +1445,7 @@ mono_get_frame_info (gint32 skip,
+ 
+ 	g_assert (skip >= 0);
+ 
+-	if (mono_llvm_only) {
++	if (mono_llvm_only && !(mono_wasm_fallback_interp && mono_wasm_enable_fallback_interp)) {
+ 		GSList *l, *ips;
+ 		guint8 *frame_ip = NULL;
+ 
+@@ -1504,7 +1506,7 @@ mono_get_frame_info (gint32 skip,
+ 				skip--;
+ 				break;
+ 			default:
+-				g_assert_not_reached ();
++				break;
+ 			}
+ 		} while (skip >= 0);
+ 
+diff --git a/src/mono/mono/mini/mini-runtime.c b/src/mono/mono/mini/mini-runtime.c
+index bcd7754da..e7e02b73e 100644
+--- a/src/mono/mono/mini/mini-runtime.c
++++ b/src/mono/mono/mini/mini-runtime.c
+@@ -2683,6 +2683,8 @@ compile_special (MonoMethod *method, MonoError *error)
+ 	return NULL;
+ }
+ 
++int mono_wasm_fallback_interp = 0;
++int mono_wasm_enable_fallback_interp = 0;
+ static gpointer
+ mono_jit_compile_method_with_opt (MonoMethod *method, guint32 opt, gboolean jit_only, MonoError *error)
+ {
+@@ -2798,6 +2800,12 @@ lookup_start:
+ 
+ 	if (!jit_only && !code && mono_aot_only && mono_use_interpreter && method->wrapper_type != MONO_WRAPPER_OTHER) {
+ 		if (mono_llvm_only) {
++			if (mono_wasm_fallback_interp && mono_wasm_enable_fallback_interp) {
++				code = mini_get_interp_callbacks ()->create_method_pointer (method, TRUE, error);
++				if (code)
++					return code;
++				return_val_if_nok (error, NULL);
++			}
+ 			/* Signal to the caller that AOTed code is not found */
+ 			g_assert (method->wrapper_type != MONO_WRAPPER_RUNTIME_INVOKE);
+ 			return NULL;
+@@ -2817,6 +2825,13 @@ lookup_start:
+ 		}
+ 
+ 		if (mono_aot_only) {
++			if (mono_wasm_fallback_interp && mono_wasm_enable_fallback_interp) {
++				code = mini_get_interp_callbacks ()->create_method_pointer (method, TRUE, error);
++				if (code)
++					return code;
++				return_val_if_nok (error, NULL);
++			}
++
+ 			char *fullname = mono_method_get_full_name (method);
+ 			mono_error_set_execution_engine (error, "Attempting to JIT compile method '%s' while running in aot-only mode. See https://learn.microsoft.com/xamarin/ios/internals/limitations for more information.\n", fullname);
+ 			g_free (fullname);
+diff --git a/src/mono/mono/utils/options-def.h b/src/mono/mono/utils/options-def.h
+index 7c1b2c3ff..656703c5e 100644
+--- a/src/mono/mono/utils/options-def.h
++++ b/src/mono/mono/utils/options-def.h
+@@ -89,7 +89,7 @@ DEFINE_BOOL(jiterpreter_jit_call_enabled, "jiterpreter-jit-call-enabled", TRUE,
+ DEFINE_BOOL(wasm_gc_safepoints, "wasm-gc-safepoints", FALSE, "Use GC safepoints on WASM")
+ #else
+ // traces_enabled controls whether the jiterpreter will JIT individual interpreter opcode traces
+-DEFINE_BOOL_READONLY(jiterpreter_traces_enabled, "jiterpreter-traces-enabled", FALSE, "JIT interpreter opcode traces into WASM")
++DEFINE_BOOL(jiterpreter_traces_enabled, "jiterpreter-traces-enabled", TRUE, "JIT interpreter opcode traces into WASM")
+ // interp_entry_enabled controls whether specialized interp_entry wrappers will be jitted
+ DEFINE_BOOL_READONLY(jiterpreter_interp_entry_enabled, "jiterpreter-interp-entry-enabled", FALSE, "JIT specialized WASM interp_entry wrappers")
+ // jit_call_enabled controls whether do_jit_call will use specialized trampolines for hot call sites
