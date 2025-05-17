@@ -1,0 +1,497 @@
+﻿using System.Text.RegularExpressions;
+
+string input = args[0];
+string output = args[1];
+
+string content = File.ReadAllText(input);
+string[] split = content.Split("\n");
+
+string? callbackType = null;
+int doCallbackId = -1;
+
+Dictionary<string, string> luaCache = new();
+// ar x ../src/liblua.a
+// for file in *.o; wasm2wat --enable-all --no-check $file; end | grep -E '^\s*\(func \$lua' | wl-copy
+string[] luaFuncs = [
+	"(func $lua_checkstack (type 0) (param i32 i32) (result i32)",
+	"(func $lua_xmove (type 2) (param i32 i32 i32)",
+	"(func $lua_atpanic (type 0) (param i32 i32) (result i32)",
+	"(func $lua_version (type 3) (param i32) (result f64)",
+	"(func $lua_absindex (type 0) (param i32 i32) (result i32)",
+	"(func $lua_gettop (type 4) (param i32) (result i32)",
+	"(func $lua_settop (type 5) (param i32 i32)",
+	"(func $lua_closeslot (type 5) (param i32 i32)",
+	"(func $lua_rotate (type 2) (param i32 i32 i32)",
+	"(func $lua_copy (type 2) (param i32 i32 i32)",
+	"(func $lua_pushvalue (type 5) (param i32 i32)",
+	"(func $lua_type (type 0) (param i32 i32) (result i32)",
+	"(func $lua_typename (type 0) (param i32 i32) (result i32)",
+	"(func $lua_iscfunction (type 0) (param i32 i32) (result i32)",
+	"(func $lua_isinteger (type 0) (param i32 i32) (result i32)",
+	"(func $lua_isnumber (type 0) (param i32 i32) (result i32)",
+	"(func $lua_isstring (type 0) (param i32 i32) (result i32)",
+	"(func $lua_isuserdata (type 0) (param i32 i32) (result i32)",
+	"(func $lua_rawequal (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_arith (type 5) (param i32 i32)",
+	"(func $lua_compare (type 6) (param i32 i32 i32 i32) (result i32)",
+	"(func $lua_stringtonumber (type 0) (param i32 i32) (result i32)",
+	"(func $lua_tonumberx (type 8) (param i32 i32 i32) (result f64)",
+	"(func $lua_tointegerx (type 9) (param i32 i32 i32) (result i64)",
+	"(func $lua_toboolean (type 0) (param i32 i32) (result i32)",
+	"(func $lua_tolstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_rawlen (type 11) (param i32 i32) (result i64)",
+	"(func $lua_tocfunction (type 0) (param i32 i32) (result i32)",
+	"(func $lua_touserdata (type 0) (param i32 i32) (result i32)",
+	"(func $lua_tothread (type 0) (param i32 i32) (result i32)",
+	"(func $lua_topointer (type 0) (param i32 i32) (result i32)",
+	"(func $lua_pushnil (type 10) (param i32)",
+	"(func $lua_pushnumber (type 13) (param i32 f64)",
+	"(func $lua_pushinteger (type 14) (param i32 i64)",
+	"(func $lua_pushlstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_pushstring (type 0) (param i32 i32) (result i32)",
+	"(func $lua_pushvfstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_pushfstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_pushcclosure (type 2) (param i32 i32 i32)",
+	"(func $lua_pushboolean (type 5) (param i32 i32)",
+	"(func $lua_pushlightuserdata (type 5) (param i32 i32)",
+	"(func $lua_pushthread (type 4) (param i32) (result i32)",
+	"(func $lua_getglobal (type 0) (param i32 i32) (result i32)",
+	"(func $lua_gettable (type 0) (param i32 i32) (result i32)",
+	"(func $lua_getfield (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_geti (type 15) (param i32 i32 i64) (result i32)",
+	"(func $lua_rawget (type 0) (param i32 i32) (result i32)",
+	"(func $lua_rawgeti (type 15) (param i32 i32 i64) (result i32)",
+	"(func $lua_rawgetp (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_createtable (type 2) (param i32 i32 i32)",
+	"(func $lua_getmetatable (type 0) (param i32 i32) (result i32)",
+	"(func $lua_getiuservalue (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_setglobal (type 5) (param i32 i32)",
+	"(func $lua_settable (type 5) (param i32 i32)",
+	"(func $lua_setfield (type 2) (param i32 i32 i32)",
+	"(func $lua_seti (type 18) (param i32 i32 i64)",
+	"(func $lua_rawset (type 5) (param i32 i32)",
+	"(func $lua_rawsetp (type 2) (param i32 i32 i32)",
+	"(func $lua_rawseti (type 18) (param i32 i32 i64)",
+	"(func $lua_setmetatable (type 0) (param i32 i32) (result i32)",
+	"(func $lua_setiuservalue (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_callk (type 7) (param i32 i32 i32 i32 i32)",
+	"(func $lua_pcallk (type 20) (param i32 i32 i32 i32 i32 i32) (result i32)",
+	"(func $lua_load (type 21) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $lua_dump (type 6) (param i32 i32 i32 i32) (result i32)",
+	"(func $lua_status (type 4) (param i32) (result i32)",
+	"(func $lua_gc (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_error (type 4) (param i32) (result i32)",
+	"(func $lua_next (type 0) (param i32 i32) (result i32)",
+	"(func $lua_toclose (type 5) (param i32 i32)",
+	"(func $lua_concat (type 5) (param i32 i32)",
+	"(func $lua_len (type 5) (param i32 i32)",
+	"(func $lua_getallocf (type 0) (param i32 i32) (result i32)",
+	"(func $lua_setallocf (type 2) (param i32 i32 i32)",
+	"(func $lua_setwarnf (type 2) (param i32 i32 i32)",
+	"(func $lua_warning (type 2) (param i32 i32 i32)",
+	"(func $lua_newuserdatauv (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_getupvalue (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_setupvalue (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_upvalueid (type 1) (param i32 i32 i32) (result i32)",
+	"(func $lua_upvaluejoin (type 7) (param i32 i32 i32 i32 i32)",
+	"(func $luaL_traceback (type 0) (param i32 i32 i32 i32)",
+	"(func $luaL_buffinit (type 2) (param i32 i32)",
+	"(func $luaL_addstring (type 2) (param i32 i32)",
+	"(func $luaL_prepbuffsize (type 4) (param i32 i32) (result i32)",
+	"(func $luaL_addvalue (type 6) (param i32)",
+	"(func $luaL_pushresult (type 6) (param i32)",
+	"(func $luaL_argerror (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_error (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_typeerror (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_getmetafield (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_where (type 2) (param i32 i32)",
+	"(func $luaL_fileresult (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_execresult (type 4) (param i32 i32) (result i32)",
+	"(func $luaL_newmetatable (type 4) (param i32 i32) (result i32)",
+	"(func $luaL_setmetatable (type 2) (param i32 i32)",
+	"(func $luaL_testudata (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_checkudata (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_checkoption (type 9) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaL_optlstring (type 9) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaL_checklstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_checkstack (type 5) (param i32 i32 i32)",
+	"(func $luaL_checktype (type 5) (param i32 i32 i32)",
+	"(func $luaL_checkany (type 2) (param i32 i32)",
+	"(func $luaL_checknumber (type 10) (param i32 i32) (result f64)",
+	"(func $luaL_optnumber (type 12) (param i32 i32 f64) (result f64)",
+	"(func $luaL_checkinteger (type 13) (param i32 i32) (result i64)",
+	"(func $luaL_optinteger (type 15) (param i32 i32 i64) (result i64)",
+	"(func $luaL_setfuncs (type 5) (param i32 i32 i32)",
+	"(func $luaL_addlstring (type 5) (param i32 i32 i32)",
+	"(func $luaL_pushresultsize (type 2) (param i32 i32)",
+	"(func $luaL_buffinitsize (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_ref (type 4) (param i32 i32) (result i32)",
+	"(func $luaL_unref (type 5) (param i32 i32 i32)",
+	"(func $luaL_loadfilex (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_loadbufferx (type 18) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaL_loadstring (type 4) (param i32 i32) (result i32)",
+	"(func $luaL_callmeta (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_len (type 13) (param i32 i32) (result i64)",
+	"(func $luaL_tolstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_getsubtable (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaL_requiref (type 0) (param i32 i32 i32 i32)",
+	"(func $luaL_addgsub (type 0) (param i32 i32 i32 i32)",
+	"(func $luaL_gsub (type 9) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaL_newstate (type 7) (result i32)",
+	"(func $luaL_checkversion_ (type 20) (param i32 f64 i32)",
+	"(func $luaopen_base (type 0) (param i32) (result i32)",
+	"(func $luaB_assert (type 0) (param i32) (result i32)",
+	"(func $luaB_error (type 0) (param i32) (result i32)",
+	"(func $luaB_collectgarbage (type 0) (param i32) (result i32)",
+	"(func $luaB_dofile (type 0) (param i32) (result i32)",
+	"(func $luaB_getmetatable (type 0) (param i32) (result i32)",
+	"(func $luaB_ipairs (type 0) (param i32) (result i32)",
+	"(func $luaB_loadfile (type 0) (param i32) (result i32)",
+	"(func $luaB_load (type 0) (param i32) (result i32)",
+	"(func $luaB_next (type 0) (param i32) (result i32)",
+	"(func $luaB_pairs (type 0) (param i32) (result i32)",
+	"(func $luaB_pcall (type 0) (param i32) (result i32)",
+	"(func $luaB_print (type 0) (param i32) (result i32)",
+	"(func $luaB_warn (type 0) (param i32) (result i32)",
+	"(func $luaB_rawequal (type 0) (param i32) (result i32)",
+	"(func $luaB_rawlen (type 0) (param i32) (result i32)",
+	"(func $luaB_rawget (type 0) (param i32) (result i32)",
+	"(func $luaB_rawset (type 0) (param i32) (result i32)",
+	"(func $luaB_select (type 0) (param i32) (result i32)",
+	"(func $luaB_setmetatable (type 0) (param i32) (result i32)",
+	"(func $luaB_tonumber (type 0) (param i32) (result i32)",
+	"(func $luaB_tostring (type 0) (param i32) (result i32)",
+	"(func $luaB_type (type 0) (param i32) (result i32)",
+	"(func $luaB_xpcall (type 0) (param i32) (result i32)",
+	"(func $luaK_semerror (type 0) (param i32 i32)",
+	"(func $luaK_exp2const (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaK_nil (type 2) (param i32 i32 i32)",
+	"(func $luaK_codeABCk (type 4) (param i32 i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaK_concat (type 2) (param i32 i32 i32)",
+	"(func $luaK_jump (type 5) (param i32) (result i32)",
+	"(func $luaK_ret (type 2) (param i32 i32 i32)",
+	"(func $luaK_getlabel (type 5) (param i32) (result i32)",
+	"(func $luaK_patchlist (type 2) (param i32 i32 i32)",
+	"(func $luaK_patchtohere (type 0) (param i32 i32)",
+	"(func $luaK_code (type 7) (param i32 i32) (result i32)",
+	"(func $luaK_codeABx (type 8) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaK_checkstack (type 0) (param i32 i32)",
+	"(func $luaK_reserveregs (type 0) (param i32 i32)",
+	"(func $luaK_int (type 9) (param i32 i32 i64)",
+	"(func $luaK_codek (type 2) (param i32 i32 i32)",
+	"(func $luaK_setreturns (type 2) (param i32 i32 i32)",
+	"(func $luaK_setoneret (type 0) (param i32 i32)",
+	"(func $luaK_dischargevars (type 0) (param i32 i32)",
+	"(func $luaK_exp2nextreg (type 0) (param i32 i32)",
+	"(func $luaK_exp2anyreg (type 7) (param i32 i32) (result i32)",
+	"(func $luaK_exp2anyregup (type 0) (param i32 i32)",
+	"(func $luaK_exp2val (type 0) (param i32 i32)",
+	"(func $luaK_storevar (type 2) (param i32 i32 i32)",
+	"(func $luaK_self (type 2) (param i32 i32 i32)",
+	"(func $luaK_goiftrue (type 0) (param i32 i32)",
+	"(func $luaK_goiffalse (type 0) (param i32 i32)",
+	"(func $luaK_indexed (type 2) (param i32 i32 i32)",
+	"(func $luaK_prefix (type 10) (param i32 i32 i32 i32)",
+	"(func $luaK_infix (type 2) (param i32 i32 i32)",
+	"(func $luaK_exp2K (type 7) (param i32 i32) (result i32)",
+	"(func $luaK_posfix (type 6) (param i32 i32 i32 i32 i32)",
+	"(func $luaK_fixline (type 0) (param i32 i32)",
+	"(func $luaK_settablesize (type 6) (param i32 i32 i32 i32 i32)",
+	"(func $luaK_setlist (type 10) (param i32 i32 i32 i32)",
+	"(func $luaK_finish (type 14) (param i32)",
+	"(func $luaopen_coroutine (type 0) (param i32) (result i32)",
+	"(func $luaB_cocreate (type 0) (param i32) (result i32)",
+	"(func $luaB_coresume (type 0) (param i32) (result i32)",
+	"(func $luaB_corunning (type 0) (param i32) (result i32)",
+	"(func $luaB_costatus (type 0) (param i32) (result i32)",
+	"(func $luaB_cowrap (type 0) (param i32) (result i32)",
+	"(func $luaB_auxwrap (type 0) (param i32) (result i32)",
+	"(func $luaB_yield (type 0) (param i32) (result i32)",
+	"(func $luaB_yieldable (type 0) (param i32) (result i32)",
+	"(func $luaB_close (type 0) (param i32) (result i32)",
+	"(func $luaopen_debug (type 0) (param i32) (result i32)",
+	"(func $luaG_getfuncline (type 0) (param i32 i32) (result i32)",
+	"(func $lua_sethook (type 1) (param i32 i32 i32 i32)",
+	"(func $lua_gethook (type 2) (param i32) (result i32)",
+	"(func $lua_gethookmask (type 2) (param i32) (result i32)",
+	"(func $lua_gethookcount (type 2) (param i32) (result i32)",
+	"(func $lua_getstack (type 3) (param i32 i32 i32) (result i32)",
+	"(func $luaG_findlocal (type 4) (param i32 i32 i32 i32) (result i32)",
+	"(func $lua_getlocal (type 3) (param i32 i32 i32) (result i32)",
+	"(func $lua_setlocal (type 3) (param i32 i32 i32) (result i32)",
+	"(func $lua_getinfo (type 3) (param i32 i32 i32) (result i32)",
+	"(func $luaG_typeerror (type 5) (param i32 i32 i32)",
+	"(func $luaG_runerror (type 5) (param i32 i32 i32)",
+	"(func $luaG_callerror (type 7) (param i32 i32)",
+	"(func $luaG_forerror (type 5) (param i32 i32 i32)",
+	"(func $luaG_errormsg (type 8) (param i32)",
+	"(func $luaG_concaterror (type 5) (param i32 i32 i32)",
+	"(func $luaG_opinterror (type 1) (param i32 i32 i32 i32)",
+	"(func $luaG_tointerror (type 5) (param i32 i32 i32)",
+	"(func $luaG_ordererror (type 5) (param i32 i32 i32)",
+	"(func $luaG_addinfo (type 4) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaG_tracecall (type 2) (param i32) (result i32)",
+	"(func $luaG_traceexec (type 0) (param i32 i32) (result i32)",
+	"(func $luaD_seterrorobj (type 0) (param i32 i32 i32)",
+	"(func $luaD_throw (type 2) (param i32 i32)",
+	"(func $luaD_rawrunprotected (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaD_reallocstack (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaD_growstack (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaD_shrinkstack (type 8) (param i32)",
+	"(func $luaD_inctop (type 8) (param i32)",
+	"(func $luaD_hook (type 9) (param i32 i32 i32 i32 i32)",
+	"(func $luaD_hookcall (type 2) (param i32 i32)",
+	"(func $luaD_poscall (type 0) (param i32 i32 i32)",
+	"(func $luaD_pretailcall (type 10) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaD_precall (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaD_call (type 0) (param i32 i32 i32)",
+	"(func $luaD_callnoyield (type 0) (param i32 i32 i32)",
+	"(func $lua_resume (type 6) (param i32 i32 i32 i32) (result i32)",
+	"(func $lua_isyieldable (type 4) (param i32) (result i32)",
+	"(func $lua_yieldk (type 6) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaD_closeprotected (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaD_pcall (type 10) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaD_protectedparser (type 6) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaU_dump (type 0) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaF_newCclosure (type 0) (param i32 i32) (result i32)",
+	"(func $luaF_newLclosure (type 0) (param i32 i32) (result i32)",
+	"(func $luaF_initupvals (type 2) (param i32 i32)",
+	"(func $luaF_findupval (type 0) (param i32 i32) (result i32)",
+	"(func $luaF_newtbcupval (type 2) (param i32 i32)",
+	"(func $luaF_unlinkupval (type 5) (param i32)",
+	"(func $luaF_closeupval (type 2) (param i32 i32)",
+	"(func $luaF_close (type 4) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaF_newproto (type 6) (param i32) (result i32)",
+	"(func $luaF_freeproto (type 2) (param i32 i32)",
+	"(func $luaF_getlocalname (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaC_barrier_ (type 0) (param i32 i32 i32)",
+	"(func $luaC_barrierback_ (type 1) (param i32 i32)",
+	"(func $luaC_fix (type 1) (param i32 i32)",
+	"(func $luaC_newobjdt (type 2) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaC_newobj (type 3) (param i32 i32 i32) (result i32)",
+	"(func $luaC_checkfinalizer (type 0) (param i32 i32 i32)",
+	"(func $luaC_changemode (type 1) (param i32 i32)",
+	"(func $luaC_freeallobjects (type 6) (param i32)",
+	"(func $luaC_runtilstate (type 1) (param i32 i32)",
+	"(func $luaC_step (type 6) (param i32)",
+	"(func $luaC_fullgc (type 1) (param i32 i32)",
+	"(func $luaL_openlibs (type 0) (param i32)",
+	"(func $luaopen_io (type 0) (param i32) (result i32)",
+	"(func $luaX_init (type 0) (param i32)",
+	"(func $luaX_token2str (type 3) (param i32 i32) (result i32)",
+	"(func $luaX_syntaxerror (type 2) (param i32 i32)",
+	"(func $luaX_newstring (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaX_setinput (type 6) (param i32 i32 i32 i32 i32)",
+	"(func $luaX_next (type 0) (param i32)",
+	"(func $luaX_lookahead (type 7) (param i32) (result i32)",
+	"(func $luaopen_math (type 0) (param i32) (result i32)",
+	"(func $luaM_growaux_ (type 0) (param i32 i32 i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaM_saferealloc_ (type 2) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaM_shrinkvector_ (type 4) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaM_toobig (type 5) (param i32)",
+	"(func $luaM_free_ (type 1) (param i32 i32 i32)",
+	"(func $luaM_realloc_ (type 2) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaM_malloc_ (type 6) (param i32 i32 i32) (result i32)",
+	"(func $luaopen_package (type 0) (param i32) (result i32)",
+	"(func $luaO_ceillog2 (type 0) (param i32) (result i32)",
+	"(func $luaO_rawarith (type 1) (param i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaO_arith (type 8) (param i32 i32 i32 i32 i32)",
+	"(func $luaO_hexavalue (type 0) (param i32) (result i32)",
+	"(func $luaO_str2num (type 9) (param i32 i32) (result i32)",
+	"(func $luaO_utf8esc (type 9) (param i32 i32) (result i32)",
+	"(func $luaO_tostring (type 12) (param i32 i32)",
+	"(func $luaO_pushvfstring (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaO_pushfstring (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaO_chunkid (type 14) (param i32 i32 i32)",
+	"(func $luaopen_os (type 0) (param i32) (result i32)",
+	"(func $luaY_nvarstack (type 0) (param i32) (result i32)",
+	"(func $luaY_parser (type 1) (param i32 i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaE_setdebt (type 0) (param i32 i32)",
+	"(func $lua_setcstacklimit (type 1) (param i32 i32) (result i32)",
+	"(func $luaE_extendCI (type 2) (param i32) (result i32)",
+	"(func $luaE_shrinkCI (type 4) (param i32)",
+	"(func $luaE_checkcstack (type 4) (param i32)",
+	"(func $luaE_incCstack (type 4) (param i32)",
+	"(func $lua_newthread (type 2) (param i32) (result i32)",
+	"(func $luaE_freethread (type 0) (param i32 i32)",
+	"(func $luaE_resetthread (type 1) (param i32 i32) (result i32)",
+	"(func $lua_closethread (type 1) (param i32 i32) (result i32)",
+	"(func $lua_resetthread (type 2) (param i32) (result i32)",
+	"(func $lua_newstate (type 1) (param i32 i32) (result i32)",
+	"(func $lua_close (type 4) (param i32)",
+	"(func $luaE_warning (type 5) (param i32 i32 i32)",
+	"(func $luaE_warnerror (type 0) (param i32 i32)",
+	"(func $luaS_eqlngstr (type 0) (param i32 i32) (result i32)",
+	"(func $luaS_hash (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaS_hashlongstr (type 2) (param i32) (result i32)",
+	"(func $luaS_resize (type 3) (param i32 i32)",
+	"(func $luaS_clearcache (type 6) (param i32)",
+	"(func $luaS_init (type 6) (param i32)",
+	"(func $luaS_newlstr (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaS_createlngstrobj (type 0) (param i32 i32) (result i32)",
+	"(func $luaS_remove (type 3) (param i32 i32)",
+	"(func $luaS_new (type 0) (param i32 i32) (result i32)",
+	"(func $luaS_newudata (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaopen_string (type 0) (param i32) (result i32)",
+	"(func $luaH_realasize (type 0) (param i32) (result i32)",
+	"(func $luaH_next (type 1) (param i32 i32 i32) (result i32)",
+	"(func $luaH_resize (type 3) (param i32 i32 i32 i32)",
+	"(func $luaH_newkey (type 3) (param i32 i32 i32 i32)",
+	"(func $luaH_get (type 5) (param i32 i32) (result i32)",
+	"(func $luaH_setint (type 7) (param i32 i32 i64 i32)",
+	"(func $luaH_resizearray (type 2) (param i32 i32 i32)",
+	"(func $luaH_new (type 0) (param i32) (result i32)",
+	"(func $luaH_free (type 6) (param i32 i32)",
+	"(func $luaH_getint (type 8) (param i32 i64) (result i32)",
+	"(func $luaH_getshortstr (type 5) (param i32 i32) (result i32)",
+	"(func $luaH_getstr (type 5) (param i32 i32) (result i32)",
+	"(func $luaH_finishset (type 10) (param i32 i32 i32 i32 i32)",
+	"(func $luaH_set (type 3) (param i32 i32 i32 i32)",
+	"(func $luaH_getn (type 11) (param i32) (result i64)",
+	"(func $luaopen_table (type 0) (param i32) (result i32)",
+	"(func $luaT_init (type 0) (param i32)",
+	"(func $luaT_gettm (type 3) (param i32 i32 i32) (result i32)",
+	"(func $luaT_gettmbyobj (type 3) (param i32 i32 i32) (result i32)",
+	"(func $luaT_objtypename (type 1) (param i32 i32) (result i32)",
+	"(func $luaT_callTM (type 4) (param i32 i32 i32 i32 i32)",
+	"(func $luaT_callTMres (type 4) (param i32 i32 i32 i32 i32)",
+	"(func $luaT_trybinTM (type 4) (param i32 i32 i32 i32 i32)",
+	"(func $luaT_tryconcatTM (type 0) (param i32)",
+	"(func $luaT_trybinassocTM (type 8) (param i32 i32 i32 i32 i32 i32)",
+	"(func $luaT_trybiniTM (type 9) (param i32 i32 i64 i32 i32 i32)",
+	"(func $luaT_callorderTM (type 10) (param i32 i32 i32 i32) (result i32)",
+	"(func $luaT_callorderiTM (type 11) (param i32 i32 i32 i32 i32 i32) (result i32)",
+	"(func $luaT_adjustvarargs (type 7) (param i32 i32 i32 i32)",
+	"(func $luaT_getvarargs (type 7) (param i32 i32 i32 i32)",
+	"(func $luaU_undump (type 0) (param i32 i32 i32) (result i32)",
+	"(func $luaopen_utf8 (type 0) (param i32) (result i32)",
+	"(func $luaV_tonumber_ (type 0) (param i32 i32) (result i32)",
+	"(func $luaV_flttointeger (type 1) (param f64 i32 i32) (result i32)",
+	"(func $luaV_tointegerns (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaV_tointeger (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaV_finishget (type 3) (param i32 i32 i32 i32 i32)",
+	"(func $luaV_finishset (type 3) (param i32 i32 i32 i32 i32)",
+	"(func $luaV_lessthan (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaV_lessequal (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaV_equalobj (type 2) (param i32 i32 i32) (result i32)",
+	"(func $luaV_concat (type 5) (param i32 i32)",
+	"(func $luaV_objlen (type 4) (param i32 i32 i32)",
+	"(func $luaV_idiv (type 9) (param i32 i64 i64) (result i64)",
+	"(func $luaV_mod (type 9) (param i32 i64 i64) (result i64)",
+	"(func $luaV_modf (type 10) (param i32 f64 f64) (result f64)",
+	"(func $luaV_shiftl (type 12) (param i64 i64) (result i64)",
+	"(func $luaV_finishOp (type 7) (param i32)",
+	"(func $luaV_execute (type 5) (param i32 i32)",
+	"(func $luaZ_fill (type 0) (param i32) (result i32)",
+	"(func $luaZ_init (type 2) (param i32 i32 i32 i32)",
+	"(func $luaZ_read (type 1) (param i32 i32 i32) (result i32)",
+];
+
+for (int i = 0; i < split.Length; i++)
+{
+	string line = split[i];
+
+    if (callbackType == null && line.Contains("(type") && line.Contains("(func (param i32 i32 i32) (result i32))"))
+    {
+        callbackType = line.Split(";")[1];
+        Console.WriteLine($"found callback type: {callbackType}");
+    }
+    if (line.Contains("(elem (;0;)"))
+    {
+        string[] functable = string.Join("func", line.Split("func").Skip(1)).TrimEnd(')').Split(" ");
+        doCallbackId = functable.Index().First(x => x.Item == "$do_callback").Index;
+		Console.WriteLine($"found callback index: {doCallbackId}");
+    }
+
+	line = line.Trim();
+	// emscripten sucks. do not ever use that piece of software willingly
+	if (line.StartsWith("(func $lua")) {
+		var name = string.Join(" ", line.Split(" ").Take(2));
+		Console.WriteLine(name);
+		var mappedFunc = luaFuncs.First(x => x.StartsWith(name));
+		var type = string.Join(" ", mappedFunc.Split(" ").Skip(4));
+		Console.WriteLine($"{name}: {type}");
+
+		if (luaCache.TryGetValue(type, out var cached)) {
+			Console.WriteLine($" - {name} {cached} (cached)");
+			split[i] = name + " " + cached;
+		} else {
+			var typeString = split.First(x => x.Contains("(type") && x.Contains($"(func {type})"));
+			var typeId = typeString.Split(";")[1];
+			var typeTypeRaw = typeString.Split("(func ")[1];
+			var typeType = typeTypeRaw.Substring(0, typeTypeRaw.Length - 1);
+
+			var typeVal = $"(type {typeId}) {typeType}";
+			luaCache.Add(type, typeVal);
+			Console.WriteLine($" - {name} {typeVal}");
+			split[i] = name + " " + typeVal;
+		}
+	}
+}
+
+throw new Exception(":3");
+
+if (callbackType == null || doCallbackId == -1) throw new Exception(":(");
+
+content = Regex.Replace(content, @"\(func \$_emscripten_run_callback_on_thread.*\n([\s\S]*)\)\n\s*\(func \$do_callback", match =>
+{
+    string fullMatch = match.Value;
+    string originalBody = match.Groups[1].Value;
+
+    return fullMatch.Replace(originalBody, """
+	(local i32 i32)
+	call $emscripten_proxy_get_system_queue
+	local.set 6
+	i32.const 16
+	call $dlmalloc
+	local.tee 5
+	local.get 4
+	i32.store offset=12
+	local.get 5
+	local.get 3
+	i32.store offset=8
+	local.get 5
+	local.get 2
+	i32.store offset=4
+	local.get 5
+	local.get 1
+	i32.store
+	local.get 6
+	local.get 0
+	i32.const __X__
+	local.get 5
+	call $emscripten_proxy_async
+	i32.eqz
+	if  ;; label = @1
+	  i32.const 246281
+	  i32.const 164275
+	  i32.const 40
+	  i32.const 150929
+	  call $__assert_fail
+	  unreachable
+	end
+	""".Replace("__X__", $"{doCallbackId}"));
+});
+
+content = Regex.Replace(content, @"\(func \$do_callback.*\n([\s\S]*)\)\n\s*\(func \$_emscripten_set_offscreencanvas_size_on_thread", match =>
+{
+    string fullMatch = match.Value;
+    string originalBody = match.Groups[1].Value;
+
+    return fullMatch.Replace(originalBody, """
+	local.get 0
+	i32.load offset=4
+	local.get 0
+	i32.load offset=8
+	local.get 0
+	i32.load offset=12
+	local.get 0
+	i32.load
+	call_indirect (type __X__)
+	drop
+	local.get 0
+	call $dlfree
+	""".Replace("__X__", callbackType));
+});
+
+File.WriteAllText(output, content);

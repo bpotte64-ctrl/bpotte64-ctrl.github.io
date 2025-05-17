@@ -1,0 +1,82 @@
+diff --git a/Makefile b/Makefile
+index 72ca8ff..4a4a968 100644
+--- a/Makefile
++++ b/Makefile
+@@ -4,7 +4,7 @@
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+-PLAT= guess
++PLAT=posix 
+ 
+ # Where to install. The installation starts in the src and doc directories,
+ # so take care if INSTALL_TOP is not an absolute path. See the local target.
+diff --git a/src/Makefile b/src/Makefile
+index b771196..1bbec66 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -4,15 +4,15 @@
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+-PLAT= guess
++PLAT=posix 
+ 
+-CC= gcc -std=gnu99
++CC= emcc -std=gnu99
+ CFLAGS= -O2 -Wall -Wextra -DLUA_COMPAT_5_3 $(SYSCFLAGS) $(MYCFLAGS)
+ LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
+ LIBS= -lm $(SYSLIBS) $(MYLIBS)
+ 
+-AR= ar rcu
+-RANLIB= ranlib
++AR= emar rcu
++RANLIB= emranlib
+ RM= rm -f
+ UNAME= uname
+ 
+@@ -20,8 +20,8 @@ SYSCFLAGS=
+ SYSLDFLAGS=
+ SYSLIBS=
+ 
+-MYCFLAGS=
+-MYLDFLAGS=
++MYCFLAGS= -g -sSUPPORT_LONGJMP=emscripten -mmultivalue
++MYLDFLAGS= -g -sSUPPORT_LONGJMP=emscripten -mmultivalue
+ MYLIBS=
+ MYOBJS=
+ 
+diff --git a/src/lapi.c b/src/lapi.c
+index 332e97d..73f5250 100644
+--- a/src/lapi.c
++++ b/src/lapi.c
+@@ -930,7 +930,7 @@ LUA_API void lua_rawseti (lua_State *L, int idx, lua_Integer n) {
+ }
+ 
+ 
+-LUA_API int lua_setmetatable (lua_State *L, int objindex) {
++LUA_API void lua_setmetatable (lua_State *L, int objindex) {
+   TValue *obj;
+   Table *mt;
+   lua_lock(L);
+@@ -966,7 +966,6 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
+   }
+   L->top.p--;
+   lua_unlock(L);
+-  return 1;
+ }
+ 
+ 
+diff --git a/src/lua.h b/src/lua.h
+index f050dac..0e407bf 100644
+--- a/src/lua.h
++++ b/src/lua.h
+@@ -282,7 +282,7 @@ LUA_API void  (lua_seti) (lua_State *L, int idx, lua_Integer n);
+ LUA_API void  (lua_rawset) (lua_State *L, int idx);
+ LUA_API void  (lua_rawseti) (lua_State *L, int idx, lua_Integer n);
+ LUA_API void  (lua_rawsetp) (lua_State *L, int idx, const void *p);
+-LUA_API int   (lua_setmetatable) (lua_State *L, int objindex);
++LUA_API void  (lua_setmetatable) (lua_State *L, int objindex);
+ LUA_API int   (lua_setiuservalue) (lua_State *L, int idx, int n);
+ 
+ 

@@ -1,4 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+	<PropertyGroup Condition="$(CelesteWasmDebugSymbols) == 'true'">
+		<WasmNativeStrip>false</WasmNativeStrip>
+		<WasmNativeDebugSymbols>true</WasmNativeDebugSymbols>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="$(CelesteWasmDebugSymbols) != 'true'">
+		<WasmNativeStrip>true</WasmNativeStrip>
+		<WasmNativeDebugSymbols>false</WasmNativeDebugSymbols>
+	</PropertyGroup>
+
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -23,11 +33,9 @@
 		<WasmEnableSIMD>true</WasmEnableSIMD>
 		<WasmEnableExceptionHandling>false</WasmEnableExceptionHandling>
 		<WasmEnableWebcil>false</WasmEnableWebcil>
-		<WasmRunWasmOpt>true</WasmRunWasmOpt>
+		<!--<WasmRunWasmOpt>true</WasmRunWasmOpt>-->
 
 		<WasmBitcodeCompileOptimizationFlag>-O3</WasmBitcodeCompileOptimizationFlag>
-		<WasmNativeStrip>false</WasmNativeStrip>
-		<WasmNativeDebugSymbols>true</WasmNativeDebugSymbols>
 
 		<WebAssemblyEnableStreamingResponse>true</WebAssemblyEnableStreamingResponse>
 
@@ -37,11 +45,12 @@
 		<EmccCompileOptimizationFlag>-O3</EmccCompileOptimizationFlag>
 		<EmccEnvironment>web,worker</EmccEnvironment>
 
-		<WasmCachePath>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\cache\</WasmCachePath>
+		<_WasmShouldAOT>true</_WasmShouldAOT>
+		<RunAOTCompilation>true</RunAOTCompilation>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<WasmOptConfigurationFlags Include="--converge -O4 --flatten --rereloop --code-folding --const-hoisting --dae --flatten --merge-locals -O4 -Oz"></WasmOptConfigurationFlags>
+		<WasmOptConfigurationFlags Include="-O4 -Oz -g"></WasmOptConfigurationFlags>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -106,39 +115,33 @@
 		<Message Importance="High" Text="PInvoke table hacked" />
 	</Target>
 
-	<!-- do not touch unless you like debugging -->
-	<Target Name="ChangeClang" DependsOnTargets="_InitializeCommonProperties" BeforeTargets="_SetupEmscripten">
+	<Target Name="HackAOTCompilation" BeforeTargets="_WasmAotCompileApp">
 		<PropertyGroup>
-			<EmscriptenSdkToolsPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\</EmscriptenSdkToolsPath>
-			<EmscriptenUpstreamBinPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\bin\</EmscriptenUpstreamBinPath>
-			<EmscriptenUpstreamEmscriptenPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\</EmscriptenUpstreamEmscriptenPath>
-			<EmscriptenNodeToolsPath>$(MSBuildProjectDirectory)\..\emsdk\node\20.18.0_64bit\bin\node</EmscriptenNodeToolsPath>
-			<WasmClang>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\emcc</WasmClang>
+			<RunAOTCompilation>false</RunAOTCompilation>
 		</PropertyGroup>
+		<!--<Message Importance="High" Text="AOT compiling assemblies: @(_WasmAssembliesInternal)" />-->
 		<ItemGroup>
-			<EmscriptenPrependPATH Remove="/usr/share/dotnet/packs/*" />
-			<EmscriptenPrependPATH Include="$(EmscriptenSdkToolsPath)" />
-			<EmscriptenPrependPATH Include="$(EmscriptenUpstreamBinPath)" />
-			<EmscriptenPrependPATH Include="$([MSBuild]::NormalizeDirectory($(EmscriptenSdkToolsPath), 'emscripten'))" />
-			<EmscriptenPrependPATH Include="$(EmscriptenNodeToolsPath)" />
+			<_OldWasmAssembliesInternal Include="@(_WasmAssembliesInternal)" />
+			<!-- needed for icalls -->
+			<_FilteredWasmAssembliesInternal Include="@(_WasmAssembliesInternal)"
+				Condition="$([System.String]::Copy('%(Identity)').Contains('System.Private.CoreLib'))" />
+			<!-- attempt to improve fps -->
+			<_FilteredWasmAssembliesInternal Include="@(_WasmAssembliesInternal)"
+				Condition="$([System.String]::Copy('%(Identity)').Contains('FNA'))" />
+			<_WasmAssembliesInternal Remove="@(_WasmAssembliesInternal)" />
 		</ItemGroup>
-	</Target>
-
-	<Target Name="ChangeClang2" DependsOnTargets="_GenerateManagedToNative" BeforeTargets="_WasmCompileNativeSourceFiles">
-		<PropertyGroup>
-			<EmscriptenSdkToolsPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\</EmscriptenSdkToolsPath>
-			<EmscriptenUpstreamBinPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\bin\</EmscriptenUpstreamBinPath>
-			<EmscriptenUpstreamEmscriptenPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\</EmscriptenUpstreamEmscriptenPath>
-			<EmscriptenNodeToolsPath>$(MSBuildProjectDirectory)\..\emsdk\node\20.18.0_64bit\bin\node</EmscriptenNodeToolsPath>
-			<WasmClang>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\emcc</WasmClang>
-		</PropertyGroup>
+		<!-- msbuild evaluates the remove at the end of the block so this needs to be separate -->
 		<ItemGroup>
-			<EmscriptenPrependPATH Remove="/usr/share/dotnet/packs/*" />
-			<EmscriptenPrependPATH Include="$(EmscriptenSdkToolsPath)" />
-			<EmscriptenPrependPATH Include="$(EmscriptenUpstreamBinPath)" />
-			<EmscriptenPrependPATH Include="$([MSBuild]::NormalizeDirectory($(EmscriptenSdkToolsPath), 'emscripten'))" />
-			<EmscriptenPrependPATH Include="$(EmscriptenNodeToolsPath)" />
-			<EmscriptenEnvVars Include="PATH=$(EmscriptenSdkToolsPath):$(EmscriptenUpstreamBinPath):$([MSBuild]::NormalizeDirectory($(EmscriptenSdkToolsPath), 'emscripten')):$(EmscriptenNodeToolsPath):$(PATH)" />
+			<_WasmAssembliesInternal Include="@(_FilteredWasmAssembliesInternal)" />
+		</ItemGroup>
+		<!--<Message Importance="High" Text="AOT compiling assemblies filtered: @(_WasmAssembliesInternal)" />-->
+	</Target>
+	<Target Name="HackAOTCompilation2" BeforeTargets="_WasmStripAOTAssemblies">
+		<ItemGroup>
+			<_WasmAssembliesInternal Remove="@(_WasmAssembliesInternal)" />
+		</ItemGroup>
+		<ItemGroup>
+			<_WasmAssembliesInternal Include="@(_OldWasmAssembliesInternal)" />
 		</ItemGroup>
 	</Target>
 </Project>

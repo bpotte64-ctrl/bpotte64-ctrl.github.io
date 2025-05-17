@@ -44,7 +44,7 @@ jobs:
       - name: Build Csproj
         run: |
           cd loader && dotnet workload restore && cd ..
-          make publish
+          make publish DEBUGSYMS="false"
 
       - uses: actions/upload-artifact@v4
         with:

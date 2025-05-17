@@ -1,5 +1,6 @@
-STATICS_RELEASE=866eb1ea-276c-48ce-8413-f6a048fbf3e8
-DOTNETFLAGS=--nodereuse:false -v d
+STATICS_RELEASE=8cc459c2-d3da-4c4f-8514-966fc9afefdd
+DOTNETFLAGS=--nodereuse:false -v diag
+DEBUGSYMS="true"
 
 statics:
 	mkdir statics
@@ -17,7 +18,6 @@ SteamKit2.WASM:
 
 FNA:
 	git clone https://github.com/FNA-XNA/FNA --recursive -b 25.02
-	cd FNA && git apply ../FNA.patch
 
 NLua:
 	git clone https://github.com/NLua/NLua --recursive
@@ -26,20 +26,12 @@ NLua:
 MonoMod:
 	git clone https://github.com/r58Playz/MonoMod --recursive
 
-emsdk:
-	git clone https://github.com/emscripten-core/emsdk
-	./emsdk/emsdk install 3.1.56
-	./emsdk/emsdk activate 3.1.56
-	python3 ./sanitizeemsdk.py "$(shell realpath ./emsdk/)"
-	patch -p1 --directory emsdk/upstream/emscripten/ < emsdk.patch
-	rm -rvf emsdk/upstream/emscripten/cache/*
-
 dotnetclean:
 	rm -rvf {loader,patcher,corefier,Steamworks}/{bin,obj} frontend/public/_framework nuget || true
 clean: dotnetclean
-	rm -rvf statics MonoMod NLua FNA SteamKit2.WASM emsdk || true
+	rm -rvf statics MonoMod NLua FNA SteamKit2.WASM || true
 
-deps: statics FNA MonoMod NLua SteamKit2.WASM emsdk
+deps: statics FNA MonoMod NLua SteamKit2.WASM
 
 build: deps
 	pnpm i
@@ -47,7 +39,7 @@ build: deps
 #
 	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet restore loader $(DOTNETFLAGS)
 	bash replaceruntime.sh
-	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet publish loader -c Release $(DOTNETFLAGS)
+	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet publish loader -c Release $(DOTNETFLAGS) /p:CelesteWasmDebugSymbols="$(DEBUGSYMS)"
 #
 	cp -r loader/bin/Release/net9.0/publish/wwwroot/_framework frontend/public/
 	# emscripten sucks
@@ -56,6 +48,7 @@ build: deps
 	sed -i 's/this.appendULeb(32768)/this.appendULeb(65535)/' frontend/public/_framework/dotnet.runtime.*.js
 	# fmod messed up
 	sed -i 's/return runEmAsmFunction(code, sigPtr, argbuf);/return runMainThreadEmAsm(code, sigPtr, argbuf, 1);/' frontend/public/_framework/dotnet.native.*.js
+	bash fixwasm.sh frontend/public/_framework
 
 serve: build
 	pnpm dev
