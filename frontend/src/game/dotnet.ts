@@ -319,8 +319,11 @@ export async function preInit() {
 
 	const dlls = await getDlls();
 
+	const loc = location.pathname;
+
 	await runtime.runMain();
 	await exports.CelesteBootstrap.MountFilesystems(
+		loc.substring(0, loc.lastIndexOf("/")) + "/",
 		dlls.map((x) => `${x[0]}|${x[1]}`)
 	);
 	await exports.CelesteLoader.PreInit();

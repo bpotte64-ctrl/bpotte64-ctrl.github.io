@@ -27,7 +27,7 @@ public static partial class CelesteBootstrap
             Directory.CreateDirectory(path);
     }
 
-    private static void MountDlls(string[] rawDlls)
+    private static void MountDlls(string root, string[] rawDlls)
     {
         IEnumerable<Dll> dlls = rawDlls.Select(x =>
         {
@@ -37,7 +37,7 @@ public static partial class CelesteBootstrap
 
         // mono.cecil searches in /bin for some dlls
         Directory.CreateDirectory("/bin");
-		mount_fetch("_framework/", "/fetchdlls/");
+		mount_fetch(root + "_framework/", "/fetchdlls/");
         foreach (var dll in dlls)
         {
             int ret = mount_fetch_file($"/fetchdlls/{dll.RealName}");
@@ -50,7 +50,7 @@ public static partial class CelesteBootstrap
     }
 
     [JSExport]
-    public static async Task MountFilesystems(string[] rawDlls)
+    public static async Task MountFilesystems(string root, string[] rawDlls)
     {
         try
         {
@@ -66,7 +66,7 @@ public static partial class CelesteBootstrap
             File.CreateSymbolicLink("/Content", "/libsdl/Content");
             File.CreateSymbolicLink("/Saves", "/libsdl/Celeste/Saves");
             File.CreateSymbolicLink("/remote/%GameInstall%Saves", "/libsdl/Celeste/Saves");
-            MountDlls(rawDlls);
+            MountDlls(root, rawDlls);
         }
         catch (Exception err)
         {
