@@ -1,4 +1,4 @@
-import { DotnetHostBuilder } from "./dotnetdefs";
+import { DotnetHostBuilder, MonoConfig } from "./dotnetdefs";
 import { recursiveGetDirectory, rootFolder } from "../fs";
 import { SteamJS } from "../achievements";
 import { JsSplash } from "./loading";
@@ -85,18 +85,15 @@ useChange([gameState.playing, gameState.initting], () => {
 });
 
 let nativefetch = window.fetch;
-let wasm;
+let wasm: any;
 let dotnet: DotnetHostBuilder;
 let exports: any;
 
-export async function getDlls(): Promise<(readonly [string, string])[]> {
-	const resources: any = await nativefetch("_framework/blazor.boot.json").then(
-		(r) => r.json()
-	);
-
-	return Object.entries(resources.resources.fingerprinting)
-		.map((x) => [x[0] as string, x[1] as string] as const)
-		.filter((x) => x[1].endsWith(".dll"));
+export function getDlls(): (readonly [string, string])[] {
+	const config: MonoConfig = wasm.dotnet.instance.config;
+	const resources = [...(config.resources?.coreAssembly || []), ...(config.resources?.assembly || [])];
+	return resources
+		.map((x) => [x.name, x.virtualPath] as const)
 }
 
 // the funny custom rsa
@@ -192,14 +189,17 @@ export const loadedLibcurlPromise = new Promise((r) => (libcurlresolver = r));
 export async function preInit() {
 	if (gameState.ready) return;
 
-	wasm = await eval(`import("../_framework/dotnet.js")`);
+	let url = "../_framework/dotnet.js";
+	if (import.meta.env.DEV) {
+		url = "/_framework/dotnet.js";
+	}
+
+	wasm = await eval(`import("${url}")`);
 	dotnet = wasm.dotnet;
 
 	console.debug("initializing dotnet");
 	const runtime = await dotnet
 		.withConfig({
-			pthreadPoolInitialSize: 32,
-			pthreadPoolUnusedSize: 512,
 		})
 		.withRuntimeOptions([
 			// jit functions quickly and jit more functions
@@ -317,7 +317,7 @@ export async function preInit() {
 		exports,
 	};
 
-	const dlls = await getDlls();
+	const dlls = getDlls();
 
 	const loc = location.pathname;
 

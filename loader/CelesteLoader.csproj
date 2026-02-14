@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.WebAssembly">
 	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
 		<ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
@@ -11,7 +11,7 @@
 
 		<StartupObject>CelesteLoader</StartupObject>
 
-		<DisableBuildCompression>true</DisableBuildCompression>
+		<CompressionEnabled>false</CompressionEnabled>
 		<PublishTrimmed>false</PublishTrimmed>
 		<TrimMode>partial</TrimMode>
 
@@ -44,7 +44,18 @@
 		<__CelesteWasmEmscriptenUpstreamEmscriptenPath>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\</__CelesteWasmEmscriptenUpstreamEmscriptenPath>
 		<__CelesteWasmEmscriptenNodeToolsPath>$(MSBuildProjectDirectory)\..\emsdk\node\22.16.0_64bit\bin\node</__CelesteWasmEmscriptenNodeToolsPath>
 		<__CelesteWasmWasmClang>$(MSBuildProjectDirectory)\..\emsdk\upstream\emscripten\emcc</__CelesteWasmWasmClang>
+
+        <MicrosoftNetCoreAppRuntimePackDir>$(MSBuildProjectDirectory)\..\statics\dotnet</MicrosoftNetCoreAppRuntimePackDir>
+        <MicrosoftNetCoreAppRuntimePackRidDir>$(MicrosoftNetCoreAppRuntimePackDir)\runtimes\browser-wasm</MicrosoftNetCoreAppRuntimePackRidDir>
 	</PropertyGroup>
+
+	<Target Name="UpdateRuntimePack" AfterTargets="ResolveFrameworkReferences">
+		<ItemGroup>
+			<ResolvedRuntimePack PackageDirectory="$(MicrosoftNetCoreAppRuntimePackDir)"
+				Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App'" />
+		</ItemGroup>
+		<Message Text="Using custom runtime pack: %(ResolvedRuntimePack.PackageDirectory)" Importance="High" />
+	</Target>
 
 	<ItemGroup>
 		<WasmOptConfigurationFlags Include="-O4 -O4 -O4"></WasmOptConfigurationFlags>

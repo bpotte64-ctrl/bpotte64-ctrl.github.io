@@ -1,4 +1,4 @@
-STATICS_RELEASE=265e23ca-337c-4e8d-b383-0e1e87300468
+STATICS_RELEASE=87d20f43-0820-47e0-8cf1-b4e0cd1a50aa
 DOTNETFLAGS=--nodereuse:false -v n
 
 statics:
@@ -16,7 +16,7 @@ SteamKit2.WASM:
 	git clone https://github.com/MercuryWorkshop/SteamKit2.WASM --recursive
 
 FNA:
-	git clone https://github.com/FNA-XNA/FNA --recursive -b 25.02
+	git clone https://github.com/FNA-XNA/FNA --recursive -b 25.11
 	cd FNA && git apply ../FNA.patch
 
 NLua:
@@ -44,13 +44,10 @@ deps: statics FNA MonoMod NLua SteamKit2.WASM emsdk
 
 build: deps
 	pnpm i
-	rm -r frontend/public/_framework loader/bin/Release/net9.0/publish/wwwroot/_framework || true
-#
-	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet restore loader $(DOTNETFLAGS)
-	bash replaceruntime.sh
-	NUGET_PACKAGES="$(shell realpath .)/nuget" dotnet publish loader -c Release $(DOTNETFLAGS)
-#
-	cp -r loader/bin/Release/net9.0/publish/wwwroot/_framework frontend/public/
+	rm -r frontend/public/_framework loader/bin/Release/net10.0/publish/wwwroot/_framework statics/dotnet || true
+	unzip -q -o statics/dotnet.zip -d statics/dotnet
+	dotnet publish loader -c Release $(DOTNETFLAGS)
+	cp -r loader/bin/Release/net10.0/publish/wwwroot/_framework frontend/public/
 	# emscripten sucks
 	sed -i 's/var offscreenCanvases \?= \?{};/var offscreenCanvases={};if(globalThis.window\&\&!window.TRANSFERRED_CANVAS){transferredCanvasNames=[".canvas"];window.TRANSFERRED_CANVAS=true;}/' frontend/public/_framework/dotnet.native.*.js
 	# dotnet messed up

@@ -115,6 +115,7 @@ public static partial class CelesteLoader
                 ParseArgs.Invoke(null, [new string[] { }]);
             }
 
+			Console.WriteLine($"CelesteWasm on {RuntimeInformation.FrameworkDescription}");
             game = (Game)GameConstructor.Invoke([]);
             RunApplication = Celeste.GetField("RunApplication", BindingFlags.NonPublic | BindingFlags.Instance);
         }
