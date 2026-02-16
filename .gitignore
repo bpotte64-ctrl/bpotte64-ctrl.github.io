@@ -1,7 +1,6 @@
 bin
 obj
 /statics
-/nuget
 /emsdk
 
 /FNA

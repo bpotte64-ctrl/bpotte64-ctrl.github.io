@@ -52,7 +52,7 @@ public static partial class CelesteLoader
     static FieldInfo RunApplication;
 
     [JSExport]
-    internal static Task Init()
+    internal static Task Init(bool tailcalls)
     {
         try
         {
@@ -69,7 +69,7 @@ public static partial class CelesteLoader
 
             celeste = Assembly.LoadFrom("/libsdl/CustomCeleste.dll");
 
-			MonoMod.Core.Platforms.WasmDetourFactory.EnableTailCallDetours = true;
+            MonoMod.Core.Platforms.WasmDetourFactory.EnableTailCallDetours = tailcalls;
 
             AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, name) =>
             {
@@ -115,7 +115,7 @@ public static partial class CelesteLoader
                 ParseArgs.Invoke(null, [new string[] { }]);
             }
 
-			Console.WriteLine($"CelesteWasm on {RuntimeInformation.FrameworkDescription}");
+            Console.WriteLine($"CelesteWasm on {RuntimeInformation.FrameworkDescription}");
             game = (Game)GameConstructor.Invoke([]);
             RunApplication = Celeste.GetField("RunApplication", BindingFlags.NonPublic | BindingFlags.Instance);
         }
@@ -175,6 +175,20 @@ public static partial class CelesteLoader
             Console.Error.WriteLine(e);
             return Task.FromException(e);
         }
-		return Task.Delay(0);
+        return Task.Delay(0);
+    }
+
+    [JSExport]
+    internal static Task WatchMemoryUsage([JSMarshalAs<JSType.Function<JSType.Number, JSType.Boolean>>] Func<double, bool> callback)
+    {
+        return Task.Run(async () =>
+        {
+            while (true)
+            {
+                bool stop = callback((double)GC.GetTotalMemory(false) / (1024 * 1024));
+				if (stop) break;
+                await Task.Delay(1000 * 30);
+            }
+        });
     }
 }

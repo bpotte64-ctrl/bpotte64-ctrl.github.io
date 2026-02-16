@@ -25,13 +25,14 @@ namespace MonoMod
             Console.WriteLine($"[Celeste.Wasm] Loaded into module {MonoModRule.Modder.Module}");
             MonoModRule.Modder.Log($"[Celeste.Wasm] Loaded into module {MonoModRule.Modder.Module}");
             MonoModRule.Modder.PostProcessors += FMODPostProcessor;
+            MonoModRule.Modder.PostProcessors += GCPostProcessor;
 
             HackRelinkType("System.Net.Sockets.Socket", typeof(Celeste.Wasm.WasmSocket));
             HackRelinkType("System.Net.Sockets.NetworkStream", typeof(Celeste.Wasm.WasmNetworkStream));
         }
 
         // hacky relink without copying the type
-        public static void HackRelinkType(string source, Type dest)
+        internal static void HackRelinkType(string source, Type dest)
         {
             MonoModRule.RelinkType(source, dest.FullName);
             foreach (var member in dest.GetMembers())
@@ -40,13 +41,13 @@ namespace MonoMod
             }
         }
 
-        public static void FMODPostProcessor(MonoModder modder)
+        internal static void FMODPostProcessor(MonoModder modder)
         {
             foreach (TypeDefinition type in modder.Module.Types)
                 foreach (MethodDefinition method in type.Methods)
                     FMODPostProcessMethod(modder, method);
         }
-        public static void FMODPostProcessMethod(MonoModder modder, MethodDefinition method)
+        internal static void FMODPostProcessMethod(MonoModder modder, MethodDefinition method)
         {
             if (!method.HasBody && method.HasPInvokeInfo && method.PInvokeInfo.Module.Name.StartsWith("fmod"))
             {
@@ -56,6 +57,13 @@ namespace MonoMod
                     method.PInvokeInfo.EntryPoint = remapped;
                 }
             }
+        }
+
+        internal static void GCPostProcessor(MonoModder modder)
+        {
+            GC.Collect();
+            Console.WriteLine("[Celeste.Wasm] Forced GC after patch");
+            MonoModRule.Modder.Log($"[Celeste.Wasm] Forced GC after patch");
         }
     }
 }

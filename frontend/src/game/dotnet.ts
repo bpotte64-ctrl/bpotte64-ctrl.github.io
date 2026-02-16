@@ -11,13 +11,19 @@ export const gameState: Stateful<{
 	initting: boolean;
 	playing: boolean;
 	hasEverest: boolean;
+	memory: number;
 }> = $state({
 	ready: false,
 	initting: false,
 	playing: false,
 	hasEverest: false,
+	memory: -1,
 });
+(globalThis as any).gameState = gameState;
 export const loglisteners: ((log: Log) => void)[] = [];
+
+let logs: string[] = [];
+(globalThis as any).logs = logs;
 
 function proxyConsole(name: string, color: string) {
 	// @ts-expect-error ts sucks
@@ -34,6 +40,7 @@ function proxyConsole(name: string, color: string) {
 		for (const logger of loglisteners) {
 			logger({ color, log: str });
 		}
+		logs.push(str);
 	};
 	return old;
 }
@@ -42,6 +49,7 @@ export const bypassWarn = proxyConsole("warn", "var(--warning)");
 export const bypassLog = proxyConsole("log", "var(--fg)");
 export const bypassInfo = proxyConsole("info", "var(--info)");
 export const bypassDebug = proxyConsole("debug", "var(--fg4)");
+(globalThis as any).bypassLog = bypassLog;
 
 function hookfmod() {
 	let contexts: AudioContext[] = [];
@@ -200,6 +208,7 @@ export async function preInit() {
 	console.debug("initializing dotnet");
 	const runtime = await dotnet
 		.withConfig({
+			pthreadPoolInitialSize: 16
 		})
 		.withRuntimeOptions([
 			// jit functions quickly and jit more functions
@@ -391,14 +400,25 @@ export async function UploadSteamCloud() {
 
 const SEAMLESSCOUNT = 5;
 
+function monitorMem(): () => void {
+	let stop = false;
+	exports.CelesteLoader.WatchMemoryUsage((mem: number) => {
+		gameState.memory = mem;
+		return stop;
+	})
+	return () => stop = true;
+}
+
 export async function play() {
 	gameState.playing = true;
 	gameState.initting = true;
 
+	let stopMonitoring = monitorMem();
+
 	console.debug("Init...");
 	const before = performance.now();
 
-	await exports.CelesteLoader.Init();
+	await exports.CelesteLoader.Init(false);
 
 	// run some frames for seamless transition
 	for (let i = 0; i < SEAMLESSCOUNT; i++) {
@@ -413,8 +433,9 @@ export async function play() {
 
 	await exports.CelesteLoader.MainLoop();
 
-	console.debug("Cleanup...");
+	stopMonitoring();
 
+	console.debug("Cleanup...");
 	await exports.CelesteLoader.Cleanup();
 	gameState.ready = false;
 	gameState.playing = false;

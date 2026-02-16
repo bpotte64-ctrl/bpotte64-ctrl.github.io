@@ -181,9 +181,7 @@ namespace MonoMod
         public static void PatchFMODVersion(ILContext context, CustomAttribute attrib)
         {
             ILCursor cursor = new(context);
-            cursor.GotoNext(i => i.MatchLdcI4(out var num) && num == 69652);
-
-            if (!context.Instrs[cursor.Index].MatchLdcI4(out var _))
+            if (!cursor.TryGotoNext(i => i.MatchLdcI4(out var num) && num == 69652))
                 throw new Exception("[FMODPatcher] Unable to find FMOD version in FMOD.Studio.System.create");
 
             context.Instrs[cursor.Index].Operand = (int)0x00020307;

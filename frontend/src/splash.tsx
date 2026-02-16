@@ -388,6 +388,7 @@ const Copy: Component<
 		try {
 			let orig = await directory.getDirectoryHandle("orig", { create: false });
 			celesteExe = await orig.getFileHandle("Celeste.exe", { create: false });
+			console.debug("found everest install");
 		} catch {
 			celesteExe = await directory.getFileHandle("Celeste.exe", {
 				create: false,
@@ -447,6 +448,7 @@ const Copy: Component<
 						(e) => e.name === "Celeste.exe"
 					) as FileSystemFileEntry;
 				});
+				console.debug("found everest install");
 			} catch {
 				celesteExe = entries.find(
 					(e) => e.name === "Celeste.exe"

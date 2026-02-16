@@ -1,4 +1,4 @@
-STATICS_RELEASE=87d20f43-0820-47e0-8cf1-b4e0cd1a50aa
+STATICS_RELEASE=cfcd2c33-e3c3-4d49-a05f-c6d6ec247eb4
 DOTNETFLAGS=--nodereuse:false -v n
 
 statics:
@@ -36,7 +36,7 @@ emsdk:
 	rm -rvf emsdk/upstream/emscripten/cache/*
 
 dotnetclean:
-	rm -rvf {loader,patcher,corefier,Steamworks}/{bin,obj} frontend/public/_framework nuget || true
+	rm -rvf {loader,patcher,corefier,Steamworks}/{bin,obj} frontend/public/_framework || true
 clean: dotnetclean
 	rm -rvf statics MonoMod NLua FNA SteamKit2.WASM emsdk || true
 

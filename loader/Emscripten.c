@@ -37,3 +37,8 @@ uint32_t SDL__GetWindowFlags(void *window) {
 }
 
 void wasm_func_viil(int x, int y, uint64_t l) {}
+
+void mono_threads_request_thread_dump (void);
+EMSCRIPTEN_KEEPALIVE void perform_thread_dump() {
+	mono_threads_request_thread_dump();
+}
