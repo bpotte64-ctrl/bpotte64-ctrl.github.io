@@ -20,6 +20,9 @@ public static partial class CelesteLoader
     [DllImport("Emscripten")]
     public extern static void wasm_func_viil(Int32 x, Int32 y, Int64 l);
 
+	[JSImport("XXHash64_Fast", "interop.js")]
+	public static partial Task<JSObject> XXHash64_Fast(string file);
+
     internal static void CallPinvokeFixers()
     {
         wasm_func_viil(0, 0, 0);
@@ -113,6 +116,19 @@ public static partial class CelesteLoader
             {
                 var ParseArgs = Everest.GetMethod("ParseArgs", BindingFlags.Static | BindingFlags.NonPublic);
                 ParseArgs.Invoke(null, [new string[] { }]);
+
+				var XXH64_Fast = Everest.GetField("CelesteWasm_XXHash64Fast", BindingFlags.Static | BindingFlags.Public);
+				if (XXH64_Fast != null) {
+					Func<string, byte[]> XXH64 = (path) => {
+						try {
+							var ret = XXHash64_Fast(path).Result;
+							return ret.GetPropertyAsByteArray("ret");
+						} catch {
+							return null;
+						}
+					};
+					XXH64_Fast.SetValue(null, XXH64);
+				}
             }
 
             Console.WriteLine($"CelesteWasm on {RuntimeInformation.FrameworkDescription}");

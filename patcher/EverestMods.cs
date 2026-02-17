@@ -3,6 +3,8 @@ using Mono.Cecil.Cil;
 using MonoMod;
 using MonoMod.Cil;
 using System;
+using System.Linq;
+using System.IO;
 using System.Collections.Generic;
 
 namespace Celeste.Mod
@@ -18,12 +20,33 @@ namespace Celeste.Mod
 
                 modder.DependencyDirs.Add("/bin/");
                 modder.Mods.Add(ModuleDefinition.ReadModule("/bin/Celeste.Wasm.mm.dll"));
-				modder.RemovePatchReferences = false;
+                modder.RemovePatchReferences = false;
             }
 
             [MonoModIgnore]
             [PatchRelinkModuleMapPath]
             public extern static Dictionary<string, ModuleDefinition> get_SharedRelinkModuleMap();
+        }
+
+        [MonoModIgnore]
+        public extern static byte[] ComputeHash(Stream inputStream);
+
+        public static Func<string, byte[]> CelesteWasm_XXHash64Fast;
+
+        // forward to js
+        public static byte[] GetChecksum(string path)
+        {
+            if (CelesteWasm_XXHash64Fast != null)
+            {
+                var res = CelesteWasm_XXHash64Fast(path);
+                if (res != null)
+                    return res;
+            }
+
+            using (FileStream fs = File.OpenRead(path))
+            {
+                return ComputeHash(fs);
+            }
         }
     }
 

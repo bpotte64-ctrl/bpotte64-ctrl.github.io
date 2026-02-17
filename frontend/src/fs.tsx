@@ -6,7 +6,7 @@ import {
 	toWeb as streamToWeb,
 	/* @ts-expect-error */
 } from "streamx-webstream";
-import { h64 as XXH64 } from "xxhashjs";
+import XXH64Worker from "./xxh64.worker?worker";
 
 import iconFolder from "@ktibow/iconset-material-symbols/folder";
 import iconDraft from "@ktibow/iconset-material-symbols/draft";
@@ -41,16 +41,25 @@ export const TAR_TYPES = [
 	} as FilePickerAcceptType,
 ];
 
+export async function calculateXXH64(path: string): Promise<string> {
+	let split = path.split("/")
+	let dir = await recursiveGetDirectory(rootFolder, split.slice(0, -1));
+	let file = await dir.getFileHandle(split.at(-1)!);
+	let buf = await file.getFile().then((r) => r.arrayBuffer());
+
+	let worker = new XXH64Worker({ name: `xxh64-${path}` });
+	let promise = new Promise<string>((res, rej) => {
+		worker.onmessage = ({ data }) => res(data.digest);
+		worker.onerror = (x) => rej(new Error(`failed to hash: ${x}`));
+	});
+	worker.postMessage({ buf, }, [buf]);
+	let res = await promise;
+	worker.terminate();
+
+	return res;
+}
 export async function calculateCelesteHash(): Promise<string> {
-	const celesteFile = await rootFolder.getFileHandle("CustomCeleste.dll");
-	const celeste = await celesteFile.getFile().then((r) => r.arrayBuffer());
-
-	const hash = XXH64();
-	hash.init(0);
-	hash.update(celeste);
-	const out = hash.digest();
-
-	return out.toString(16).toUpperCase().padStart(16, "0");
+	return await calculateXXH64("CustomCeleste.dll")
 }
 
 export async function replaceHashes(hash: string) {
