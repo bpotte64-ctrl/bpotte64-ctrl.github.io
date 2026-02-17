@@ -20,8 +20,8 @@ FNA:
 	cd FNA && git apply ../FNA.patch
 
 NLua:
-	git clone https://github.com/NLua/NLua --recursive
-	cd NLua && git checkout 9dc76edd0782d484c54433fdfa3a5097f45a379a && git apply ../nlua.patch
+	git clone https://github.com/EverestAPI/NLua --recursive
+	cd NLua && git apply ../nlua.patch
 
 MonoMod:
 	git clone https://github.com/r58Playz/MonoMod --recursive

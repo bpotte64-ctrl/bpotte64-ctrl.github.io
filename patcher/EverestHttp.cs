@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using MonoMod;
 
 [MonoModLinkFrom("Celeste.Mod.Helpers.CompressedHttpClient")]
-public class RegularHttpClient : HttpClient
+public class Wasm_RegularHttpClient : HttpClient
 {
-    public RegularHttpClient() : base()
+    public Wasm_RegularHttpClient() : base()
     {
         DefaultRequestHeaders.Add("User-Agent", $"Everest/1.0.0.WASM");
     }
@@ -31,7 +31,7 @@ namespace Celeste.Mod
                 if (File.Exists(destPath))
                     File.Delete(destPath);
 
-                using (HttpClient client = new RegularHttpClient())
+                using (HttpClient client = new Wasm_RegularHttpClient())
                 {
                     client.Timeout = TimeSpan.FromMilliseconds(10000);
                     client.DefaultRequestHeaders.Add("Accept", "application/octet-stream");

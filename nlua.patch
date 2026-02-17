@@ -1,255 +1,233 @@
 diff --git a/src/Lua.cs b/src/Lua.cs
-index 223c3f5..c9efc6e 100644
+index fd8a85f..dd799ce 100644
 --- a/src/Lua.cs
 +++ b/src/Lua.cs
-@@ -337,11 +337,7 @@ namespace NLua
+@@ -1,4 +1,4 @@
+-using System;
++﻿using System;
+ using System.Linq;
+ using System.Reflection;
+ using System.Collections.Generic;
+@@ -340,9 +340,7 @@ namespace NLua
              _luaState = null;
          }
  
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int PanicCallback(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
 diff --git a/src/Metatables.cs b/src/Metatables.cs
-index e899497..899c5be 100644
+index c42e5d9..8ee9208 100644
 --- a/src/Metatables.cs
 +++ b/src/Metatables.cs
-@@ -85,11 +85,7 @@ namespace NLua
+@@ -1,4 +1,4 @@
+-using System;
++﻿using System;
+ using System.Linq;
+ using System.Collections;
+ using System.Reflection;
+@@ -104,9 +104,7 @@ namespace NLua
          /*
           * __call metafunction of CLR delegates, retrieves and calls the delegate.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int RunFunctionDelegate(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -110,11 +106,7 @@ namespace NLua
+@@ -127,9 +125,7 @@ namespace NLua
          /*
           * __gc metafunction of CLR objects.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int CollectObject(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -135,11 +127,7 @@ namespace NLua
+@@ -150,9 +146,7 @@ namespace NLua
          /*
           * __tostring metafunction of CLR objects.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int ToStringLua(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -163,11 +151,7 @@ namespace NLua
+@@ -176,9 +170,7 @@ namespace NLua
          /*
           * __add metafunction of CLR objects.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int AddLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -183,11 +167,7 @@ namespace NLua
+@@ -194,9 +186,7 @@ namespace NLua
          /*
          * __sub metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int SubtractLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -203,11 +183,7 @@ namespace NLua
+@@ -212,9 +202,7 @@ namespace NLua
          /*
          * __mul metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int MultiplyLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -223,11 +199,7 @@ namespace NLua
+@@ -230,9 +218,7 @@ namespace NLua
          /*
          * __div metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int DivideLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -243,11 +215,7 @@ namespace NLua
+@@ -248,9 +234,7 @@ namespace NLua
          /*
          * __mod metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int ModLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -263,11 +231,7 @@ namespace NLua
+@@ -266,9 +250,7 @@ namespace NLua
          /*
          * __unm metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int UnaryNegationLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -307,11 +271,7 @@ namespace NLua
+@@ -308,9 +290,7 @@ namespace NLua
          /*
          * __eq metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int EqualLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -327,11 +287,7 @@ namespace NLua
+@@ -326,9 +306,7 @@ namespace NLua
          /*
          * __lt metafunction of CLR objects.
          */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int LessThanLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -347,11 +303,7 @@ namespace NLua
+@@ -344,9 +322,7 @@ namespace NLua
          /*
           * __le metafunction of CLR objects.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int LessThanOrEqualLua(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -399,11 +351,7 @@ namespace NLua
+@@ -394,9 +370,7 @@ namespace NLua
           * either the value of the member or a delegate to call it.
           * If the member does not exist returns nil.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int GetMethod(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -705,11 +653,7 @@ namespace NLua
+@@ -698,9 +672,7 @@ namespace NLua
           * __index metafunction of base classes (the base field of Lua tables).
           * Adds a prefix to the method name to call the base version of the method.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int GetBaseMethod(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -1010,11 +954,7 @@ namespace NLua
+@@ -1001,9 +973,7 @@ namespace NLua
           * the member name and the value to be stored as arguments. Throws
           * and error if the assignment is invalid.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int SetFieldOrProperty(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -1217,11 +1157,7 @@ namespace NLua
+@@ -1206,9 +1176,7 @@ namespace NLua
          /*
           * __index metafunction of type references, works on static members.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int GetClassMethod(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -1265,11 +1201,7 @@ namespace NLua
+@@ -1252,9 +1220,7 @@ namespace NLua
          /*
           * __newindex function of type references, works on static members.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int SetClassFieldOrProperty(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -1299,11 +1231,7 @@ namespace NLua
+@@ -1284,9 +1250,7 @@ namespace NLua
          /*
           * __call metafunction of Delegates. 
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          static int CallDelegate(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
-@@ -1371,11 +1299,7 @@ namespace NLua
+@@ -1353,9 +1317,7 @@ namespace NLua
           * found or if the arguments are invalid. Throws an error if the constructor
           * generates an exception.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int CallConstructor(IntPtr state)
          {
              var luaState = LuaState.FromIntPtr(state);
 diff --git a/src/ObjectTranslator.cs b/src/ObjectTranslator.cs
-index 0b4e5bf..e02b55e 100644
+index a6233fa..fbe0850 100644
 --- a/src/ObjectTranslator.cs
 +++ b/src/ObjectTranslator.cs
+@@ -1,4 +1,4 @@
+-using System;
++﻿using System;
+ using System.IO;
+ using System.Reflection;
+ using System.Collections.Generic;
 @@ -18,6 +18,12 @@ using LuaState = KeraLua.Lua;
  using LuaNativeFunction = KeraLua.LuaFunction;
  using System.Runtime.CompilerServices;
@@ -263,98 +241,82 @@ index 0b4e5bf..e02b55e 100644
  namespace NLua
  {
      public class ObjectTranslator
-@@ -247,11 +253,7 @@ namespace NLua
+@@ -258,9 +264,7 @@ namespace NLua
           * Implementation of load_assembly. Throws an error
           * if the assembly is not found.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int LoadAssembly(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -353,11 +355,7 @@ namespace NLua
+@@ -362,9 +366,7 @@ namespace NLua
           * Implementation of import_type. Returns nil if the
           * type is not found.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int ImportType(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -383,11 +381,7 @@ namespace NLua
+@@ -390,9 +392,7 @@ namespace NLua
           * argument in the stack) as an object subclassing the
           * type passed as second argument in the stack.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int RegisterTable(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -452,11 +446,7 @@ namespace NLua
+@@ -457,9 +457,7 @@ namespace NLua
           * Implementation of free_object. Clears the metatable and the
           * base field, freeing the created object for garbage-collection
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int UnregisterTable(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -511,11 +501,7 @@ namespace NLua
+@@ -514,9 +512,7 @@ namespace NLua
           * Implementation of get_method_bysig. Returns nil
           * if no matching method is not found.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int GetMethodSignature(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -578,11 +564,7 @@ namespace NLua
+@@ -579,9 +575,7 @@ namespace NLua
           * Implementation of get_constructor_bysig. Returns nil
           * if no matching constructor is found.
           */
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int GetConstructorSignature(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -1143,11 +1125,7 @@ namespace NLua
+@@ -1174,9 +1168,7 @@ namespace NLua
              return 2;
          }
  
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int CType(IntPtr luaState)
          {
              var state = LuaState.FromIntPtr(luaState);
-@@ -1165,11 +1143,7 @@ namespace NLua
+@@ -1194,9 +1186,7 @@ namespace NLua
              return 1;
          }
  
 -#if __IOS__ || __TVOS__ || __WATCHOS__ || __MACCATALYST__
--#pragma warning disable CA1416 // Validate platform compatibility
          [MonoPInvokeCallback(typeof(LuaNativeFunction))]
--#pragma warning restore CA1416 // Validate platform compatibility
 -#endif
          private static int EnumFromInt(IntPtr luaState)
          {

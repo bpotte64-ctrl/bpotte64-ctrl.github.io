@@ -1,11 +1,11 @@
 namespace MonoMod
 {
     [MonoModLinkFrom("System.Diagnostics.Process")]
-    public class WasmProcess
+    public class Wasm_Process
     {
-        public static WasmProcess GetCurrentProcess()
+        public static Wasm_Process GetCurrentProcess()
         {
-            return new WasmProcess();
+            return new Wasm_Process();
         }
 
         public long WorkingSet64 { get { return long.MaxValue; } }

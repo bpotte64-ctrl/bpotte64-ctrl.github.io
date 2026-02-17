@@ -27,8 +27,8 @@ namespace MonoMod
             MonoModRule.Modder.PostProcessors += FMODPostProcessor;
             MonoModRule.Modder.PostProcessors += GCPostProcessor;
 
-            HackRelinkType("System.Net.Sockets.Socket", typeof(Celeste.Wasm.WasmSocket));
-            HackRelinkType("System.Net.Sockets.NetworkStream", typeof(Celeste.Wasm.WasmNetworkStream));
+            HackRelinkType("System.Net.Sockets.Socket", typeof(Celeste.Wasm.Wasm_Socket));
+            HackRelinkType("System.Net.Sockets.NetworkStream", typeof(Celeste.Wasm.Wasm_NetworkStream));
         }
 
         // hacky relink without copying the type

@@ -1,8 +1,10 @@
+using MonoMod;
 using Microsoft.Xna.Framework;
 
 namespace Monocle
 {
-    class Engine
+	[MonoModIgnore]
+    class patch_Engine
     {
         public static GraphicsDeviceManager Graphics { get; private set; }
     }
@@ -20,10 +22,10 @@ namespace Celeste
         {
             orig_ApplyScreen();
 
-            Monocle.Engine.Graphics.PreferredBackBufferWidth = WindowScale * 320;
-            Monocle.Engine.Graphics.PreferredBackBufferHeight = WindowScale * 180;
-            Monocle.Engine.Graphics.IsFullScreen = false;
-            Monocle.Engine.Graphics.ApplyChanges();
+            Monocle.patch_Engine.Graphics.PreferredBackBufferWidth = WindowScale * 320;
+            Monocle.patch_Engine.Graphics.PreferredBackBufferHeight = WindowScale * 180;
+            Monocle.patch_Engine.Graphics.IsFullScreen = false;
+            Monocle.patch_Engine.Graphics.ApplyChanges();
             Fullscreen = false;
         }
     }

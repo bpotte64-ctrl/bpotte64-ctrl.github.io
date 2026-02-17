@@ -5,7 +5,7 @@ using DnsOverHttps;
 namespace MonoMod
 {
     [MonoModLinkFrom("System.Net.Dns")]
-    public class WasmDns
+    public class Wasm_Dns
     {
         private static DnsOverHttpsClient DnsClient;
 

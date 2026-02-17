@@ -10,7 +10,7 @@ using MonoMod;
 namespace Celeste.Wasm
 {
     [MonoModIgnore]
-    public class WasmNetworkStream : Stream
+    public class Wasm_NetworkStream : Stream
     {
         private ClientWebSocket Socket;
 
@@ -20,9 +20,9 @@ namespace Celeste.Wasm
         public override long Length => throw new NotImplementedException();
         public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public WasmNetworkStream(WasmSocket socket) : this(socket, false) { }
+        public Wasm_NetworkStream(Wasm_Socket socket) : this(socket, false) { }
 
-        public WasmNetworkStream(WasmSocket socket, bool ownsSocket)
+        public Wasm_NetworkStream(Wasm_Socket socket, bool ownsSocket)
         {
             Socket = socket.Socket;
         }
@@ -71,7 +71,7 @@ namespace Celeste.Wasm
     }
 
     [MonoModIgnore]
-    public class WasmSocket : IDisposable
+    public class Wasm_Socket : IDisposable
     {
         public static bool OSSupportsIPv4 { get { return true; } }
         public static bool OSSupportsIPv6 { get { return false; } }
@@ -92,7 +92,7 @@ namespace Celeste.Wasm
 
         internal ClientWebSocket Socket;
 
-        public WasmSocket(AddressFamily addressFamily, SocketType socketType, ProtocolType protocolType)
+        public Wasm_Socket(AddressFamily addressFamily, SocketType socketType, ProtocolType protocolType)
         {
             if (!SupportedProtocolTypes.Contains(protocolType)) throw new NotSupportedException($"{protocolType} is not supported by WasmSocket");
             if (!SupportedSocketTypes.Contains(socketType)) throw new NotSupportedException($"{socketType} is not supported by WasmSocket");

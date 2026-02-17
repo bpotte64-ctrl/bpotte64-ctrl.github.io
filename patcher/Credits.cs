@@ -3,9 +3,9 @@ using System.Linq;
 
 namespace Celeste
 {
-    public class Credits
+    public class patch_Credits
     {
-        public class Thanks
+        public class patch_Thanks
         {
             [MonoModConstructor]
             public extern void orig_ctor(int padding, string title, string[] people);
