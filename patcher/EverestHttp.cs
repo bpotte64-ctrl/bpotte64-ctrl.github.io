@@ -85,7 +85,7 @@ namespace Celeste.Mod
                         while (read > 0)
                         {
                             count = length > 0 ? (int)Math.Min(buffer.Length, length - pos) : buffer.Length;
-                            read = input.Read(buffer, 0, count);
+                            read = input.ReadAsync(buffer, 0, count).Result;
                             output.Write(buffer, 0, read);
                             pos += read;
                             readForSpeed += read;

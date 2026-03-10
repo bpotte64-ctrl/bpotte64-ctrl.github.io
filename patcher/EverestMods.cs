@@ -13,13 +13,51 @@ namespace Celeste.Mod
     {
         public static class patch_Relinker
         {
+            private static void SeedDependencyCache(MonoModder modder, ModuleDefinition module)
+            {
+                string asmName = module.Assembly?.Name?.Name;
+                string asmFullName = module.Assembly?.FullName;
+                string moduleName = module.Name;
+
+                if (!string.IsNullOrEmpty(asmName))
+                {
+                    modder.DependencyCache[asmName] = module;
+                    modder.RelinkModuleMap[asmName] = module;
+                }
+
+                if (!string.IsNullOrEmpty(asmFullName))
+                    modder.DependencyCache[asmFullName] = module;
+
+                if (!string.IsNullOrEmpty(moduleName))
+                {
+                    modder.DependencyCache[moduleName] = module;
+                    modder.RelinkModuleMap[moduleName] = module;
+
+                    if (moduleName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string moduleNameWithoutExt = Path.GetFileNameWithoutExtension(moduleName);
+                        modder.DependencyCache[moduleNameWithoutExt] = module;
+                        modder.RelinkModuleMap[moduleNameWithoutExt] = module;
+                    }
+                }
+            }
+
             private static extern void orig_InitMMFlags(MonoModder modder);
             private static void InitMMFlags(MonoModder modder)
             {
                 orig_InitMMFlags(modder);
 
                 modder.DependencyDirs.Add("/bin/");
-                modder.Mods.Add(ModuleDefinition.ReadModule("/bin/Celeste.Wasm.mm.dll"));
+                ModuleDefinition wasmRules = ModuleDefinition.ReadModule("/bin/Celeste.Wasm.mm.dll");;
+
+                if (!modder.Mods.Any(m => string.Equals(m.Name, wasmRules.Name, StringComparison.OrdinalIgnoreCase)))
+                    modder.Mods.Add(wasmRules);
+
+				// load it again as a dep to make sure monomod doesn't mess it up
+				wasmRules = ModuleDefinition.ReadModule("/bin/Celeste.Wasm.mm.dll");
+
+                SeedDependencyCache(modder, wasmRules);
+                modder.MapDependencies(wasmRules);
                 modder.RemovePatchReferences = false;
             }
 
