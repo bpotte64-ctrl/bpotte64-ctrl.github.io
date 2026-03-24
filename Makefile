@@ -1,4 +1,4 @@
-STATICS_RELEASE=54a72842-ada1-4a17-b118-b4867d342cb9
+STATICS_RELEASE=d3972188-9b9b-4551-8231-7a0140e740c1
 DOTNETFLAGS=--nodereuse:false -v n
 
 statics:
@@ -9,8 +9,9 @@ statics:
 	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/SDL3.a -O statics/SDL3.a
 	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/liba.o -O statics/liba.o
 	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/hot_reload_detour.o -O statics/hot_reload_detour.o
-	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/dotnet.zip -O statics/dotnet.zip
 	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/libcrypto.a -O statics/libcrypto.a
+	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/dotnet.zip -O statics/dotnet.zip
+	wget https://github.com/r58Playz/FNA-WASM-Build/releases/download/$(STATICS_RELEASE)/emsdk.zip -O statics/emsdk.zip
 
 SteamKit2.WASM:
 	git clone https://github.com/MercuryWorkshop/SteamKit2.WASM --recursive
@@ -26,26 +27,18 @@ NLua:
 MonoMod:
 	git clone https://github.com/r58Playz/MonoMod --recursive
 
-emsdk:
-	git clone https://github.com/emscripten-core/emsdk
-	./emsdk/emsdk install 3.1.56
-	./emsdk/emsdk activate 3.1.56
-	python3 ./sanitizeemsdk.py "$(shell realpath ./emsdk/)"
-	patch -p1 --directory emsdk/upstream/emscripten/ < emsdk.patch
-	patch -p1 --directory emsdk/upstream/emscripten/ < emsdk.2.patch
-	rm -rvf emsdk/upstream/emscripten/cache/*
-
 dotnetclean:
 	rm -rvf {loader,patcher,corefier,Steamworks}/{bin,obj} frontend/public/_framework || true
 clean: dotnetclean
-	rm -rvf statics MonoMod NLua FNA SteamKit2.WASM emsdk || true
+	rm -rvf statics MonoMod NLua FNA SteamKit2.WASM || true
 
-deps: statics FNA MonoMod NLua SteamKit2.WASM emsdk
+deps: statics FNA MonoMod NLua SteamKit2.WASM
 
 build: deps
 	pnpm i
-	rm -r frontend/public/_framework loader/bin/Release/net10.0/publish/wwwroot/_framework statics/dotnet || true
+	rm -r frontend/public/_framework loader/bin/Release/net10.0/publish/wwwroot/_framework statics/{dotnet,emsdk} || true
 	unzip -q -o statics/dotnet.zip -d statics/dotnet
+	unzip -q -o statics/emsdk.zip -d statics/
 	dotnet publish loader -c Release $(DOTNETFLAGS)
 	cp -r loader/bin/Release/net10.0/publish/wwwroot/_framework frontend/public/
 	# emscripten sucks
