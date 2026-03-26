@@ -1,4 +1,4 @@
-STATICS_RELEASE=d3972188-9b9b-4551-8231-7a0140e740c1
+STATICS_RELEASE=5ca6e290-3dbe-49dd-b7f8-647e3af0a709
 DOTNETFLAGS=--nodereuse:false -v n
 
 statics:
@@ -18,7 +18,6 @@ SteamKit2.WASM:
 
 FNA:
 	git clone https://github.com/FNA-XNA/FNA --recursive -b 25.11
-	cd FNA && git apply ../FNA.patch
 
 NLua:
 	git clone https://github.com/EverestAPI/NLua --recursive
@@ -47,6 +46,7 @@ build: deps
 	sed -i 's/this.appendULeb(32768)/this.appendULeb(65535)/' frontend/public/_framework/dotnet.runtime.*.js
 	# fmod messed up
 	sed -i 's/return runEmAsmFunction(code, sigPtr, argbuf);/return runMainThreadEmAsm(code, sigPtr, argbuf, 1);/' frontend/public/_framework/dotnet.native.*.js
+	cd frontend/public/_framework && split -b20M -d -a1 dotnet.native.*.wasm dotnet.native.*.wasm && rm dotnet.native.*.wasm
 
 serve: build
 	pnpm dev

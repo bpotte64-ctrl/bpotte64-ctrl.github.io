@@ -227,6 +227,50 @@ export async function preInit() {
 			// print jit stats
 			`--jiterpreter-stats-enabled`,
 		])
+		.withResourceLoader((type, _name, defaultUri, _integrity, behavior) => {
+			// for split wasm
+			if (type === "dotnetwasm" && behavior === "dotnetwasm") {
+				return (async () => {
+					let idx = 0;
+
+					let fetchNext = async () => {
+						let res = await nativefetch(defaultUri + idx);
+						idx++;
+						if (!res.body) throw new Error("no body in fetch response");
+						return res.status === 200 && !(res.headers.get("content-type") || "").includes("text/html")
+							? res.body.getReader()
+							: null;
+					};
+
+					let chunk = await fetchNext();
+					if (!chunk) throw new Error("failed to fetch first chunk");
+					let currentStream: ReadableStreamDefaultReader<Uint8Array> = chunk;
+
+					let stream = new ReadableStream({
+						async pull(controller) {
+							let { value, done } = await currentStream.read();
+							if (done || !value) {
+								chunk = await fetchNext();
+
+								if (chunk) {
+									currentStream = chunk;
+									await this.pull!(controller);
+								} else {
+									controller.close();
+								}
+							} else {
+								controller.enqueue(value);
+							}
+						},
+					});
+
+					let res = new Response(stream, {
+						headers: new Headers({ "Content-Type": "application/wasm" }),
+					});
+					return res;
+				})();
+			}
+		})
 		.create();
 
 	runtime.setModuleImports("SteamJS", SteamJS);

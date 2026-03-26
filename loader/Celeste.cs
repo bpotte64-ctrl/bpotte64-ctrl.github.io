@@ -7,6 +7,8 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Xna.Framework;
+using MonoMod.Core.Platforms;
+using MonoMod.Logs;
 
 [assembly: System.Runtime.Versioning.SupportedOSPlatform("browser")]
 
@@ -40,6 +42,7 @@ public static partial class CelesteLoader
 
                 Environment.SetEnvironmentVariable("FNA_PLATFORM_BACKEND", "SDL3");
                 Environment.SetEnvironmentVariable("MONOMOD_DEPENDENCY_REMOVE_PATCH", "0");
+                Environment.SetEnvironmentVariable("MONOMOD_WASM_ENABLE_MAGIC_OVERWRITE", "0");
             }
             catch (Exception e)
             {
@@ -59,6 +62,12 @@ public static partial class CelesteLoader
     {
         try
         {
+            // Subscribe to Warning and Error logs from MonoMod
+            DebugLog.Subscribe(LogLevelFilter.Warning | LogLevelFilter.Error, (source, time, level, msg) =>
+            {
+                Console.WriteLine($"[{source}] {level}: {msg}");
+            });
+
             File.CreateSymbolicLink("/bin/Celeste.exe", "/libsdl/CustomCeleste.dll");
             File.CreateSymbolicLink("/bin/Celeste.dll", "/libsdl/CustomCeleste.dll");
             if (Directory.Exists("/libsdl/Celeste/Everest"))
@@ -72,7 +81,26 @@ public static partial class CelesteLoader
 
             celeste = Assembly.LoadFrom("/libsdl/CustomCeleste.dll");
 
-            MonoMod.Core.Platforms.WasmDetourFactory.EnableTailCallDetours = tailcalls;
+            WasmDetourFactory.EnableTailCallDetours = tailcalls;
+            WasmDetourFactory.Blacklist.Add("System.Private.CoreLib");
+            WasmDetourFactory.Blacklist.Add("System.Collections");
+            WasmDetourFactory.Blacklist.Add("System.Collections.Concurrent");
+            WasmDetourFactory.Blacklist.Add("System.IO.Compression");
+            WasmDetourFactory.Blacklist.Add("System.IO.Compression.FileSystem");
+            WasmDetourFactory.Blacklist.Add("System.IO.Compression.ZipFile");
+            WasmDetourFactory.Blacklist.Add("System.IO.Hashing");
+            WasmDetourFactory.Blacklist.Add("mscorlib");
+            WasmDetourFactory.Blacklist.Add("netstandard");
+            WasmDetourFactory.Blacklist.Add("FNA");
+            WasmDetourFactory.Blacklist.Add("Mono.Cecil");
+            WasmDetourFactory.Blacklist.Add("Mono.Cecil.Mdb");
+            WasmDetourFactory.Blacklist.Add("Mono.Cecil.Pdb");
+            WasmDetourFactory.Blacklist.Add("Mono.Cecil.Rocks");
+            WasmDetourFactory.Blacklist.Add("MonoMod.Core");
+            WasmDetourFactory.Blacklist.Add("MonoMod.Patcher");
+            WasmDetourFactory.Blacklist.Add("MonoMod.ILHelpers");
+            WasmDetourFactory.Blacklist.Add("MonoMod.RuntimeDetour");
+            WasmDetourFactory.Blacklist.Add("MonoMod.RuntimeDetour.HookGen");
 
             AssemblyLoadContext.Default.ResolvingUnmanagedDll += (assembly, name) =>
             {
