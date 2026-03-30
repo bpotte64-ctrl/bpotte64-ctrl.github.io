@@ -25,6 +25,7 @@ NLua:
 
 MonoMod:
 	git clone https://github.com/r58Playz/MonoMod --recursive
+	cd MonoMod && git reset --hard 8e904f7979c9423982c1f786ba57fdb22a5556d2
 
 dotnetclean:
 	rm -rvf {loader,patcher,corefier,Steamworks}/{bin,obj} frontend/public/_framework || true
