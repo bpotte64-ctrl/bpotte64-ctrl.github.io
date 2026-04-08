@@ -13,5 +13,5 @@ obj
 /frontend/public/content
 /frontend/dist
 
-.env.local
+analytics_tag
 .DS_Store

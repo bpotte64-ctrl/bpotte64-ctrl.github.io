@@ -4,6 +4,7 @@ import { SteamJS } from "../achievements";
 import { JsSplash } from "./loading";
 import { epoxyFetch, EpxTcpWs, EpxWs, getWispUrl } from "../epoxy";
 import { steamState } from "../steam";
+import { event } from "../analytics";
 
 export type Log = { color: string; log: string };
 export const gameState: Stateful<{
@@ -474,6 +475,7 @@ function monitorMem(): () => void {
 }
 
 export async function play() {
+	event("play-begin");
 	gameState.playing = true;
 	gameState.initting = true;
 

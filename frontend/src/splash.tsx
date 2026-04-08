@@ -35,6 +35,7 @@ import iconManufacturing from "@ktibow/iconset-material-symbols/manufacturing";
 import iconSettings from "@ktibow/iconset-material-symbols/settings";
 import { Settings } from "./settings";
 import { Dialog } from "./ui/Dialog";
+import { event } from "./analytics";
 
 const validateDirectory = async (directory: FileSystemDirectoryHandle) => {
 	let content;
@@ -323,6 +324,7 @@ const Extract: Component<
 
 		this.extracting = false;
 
+		event("assets-provided", { option: "archive" });
 		this["on:done"]();
 	};
 
@@ -398,6 +400,7 @@ const Copy: Component<
 
 		await new Promise((r) => setTimeout(r, 250));
 		await rootFolder.getFileHandle(".ContentExists", { create: true });
+		event("assets-provided", { option: "opfs" });
 		this["on:done"]();
 	};
 
@@ -459,6 +462,8 @@ const Copy: Component<
 			await copyFileForBadBrowsers(celesteExe!, rootFolder);
 			await new Promise((r) => setTimeout(r, 250));
 			await rootFolder.getFileHandle(".ContentExists", { create: true });
+
+			event("assets-provided", { option: "opfs-bad" });
 			this["on:done"]();
 		});
 	};
@@ -685,6 +690,7 @@ export const Download: Component<
 		this.downloading = false;
 		if (result) {
 			await rootFolder.getFileHandle(".ContentExists", { create: true });
+			event("assets-provided", { option: "steam" });
 			this["on:done"]();
 		} else {
 			console.error("FAILED TO DOWNLOAD. TRY RELOADING");
@@ -775,6 +781,7 @@ export const Patch: Component<
 		try {
 			await PatchCeleste(this.everest);
 			this.patching = false;
+			event("patched", { everest: this.everest });
 			this["on:done"]();
 		} catch {
 			console.debug("================================================");
