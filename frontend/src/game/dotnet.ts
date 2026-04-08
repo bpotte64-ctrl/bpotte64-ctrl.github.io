@@ -67,13 +67,13 @@ function hookfmod() {
 			for (let context of contexts) {
 				try {
 					await context.resume();
-				} catch { }
+				} catch {}
 			}
 		} else {
 			for (let context of contexts) {
 				try {
 					await context.suspend();
-				} catch { }
+				} catch {}
 			}
 		}
 	});
@@ -89,7 +89,7 @@ useChange([gameState.playing, gameState.initting], () => {
 			// @ts-expect-error
 			navigator.keyboard.unlock();
 		}
-	} catch (err) { }
+	} catch (err) {}
 });
 
 let nativefetch = window.fetch;
@@ -99,9 +99,11 @@ let exports: any;
 
 export function getDlls(): (readonly [string, string])[] {
 	const config: MonoConfig = wasm.dotnet.instance.config;
-	const resources = [...(config.resources?.coreAssembly || []), ...(config.resources?.assembly || [])];
-	return resources
-		.map((x) => [x.name, x.virtualPath] as const)
+	const resources = [
+		...(config.resources?.coreAssembly || []),
+		...(config.resources?.assembly || []),
+	];
+	return resources.map((x) => [x.name, x.virtualPath] as const);
 }
 
 // the funny custom rsa
@@ -133,15 +135,15 @@ function encryptRSA(data: Uint8Array, n: bigint, e: bigint): Uint8Array {
 
 		return BigInt(
 			"0x" +
-			[
-				"00",
-				"02",
-				...padding.map((byte) => byte.toString(16).padStart(2, "0")),
-				"00",
-				...Array.from(messageBytes).map((byte: any) =>
-					byte.toString(16).padStart(2, "0")
-				),
-			].join("")
+				[
+					"00",
+					"02",
+					...padding.map((byte) => byte.toString(16).padStart(2, "0")),
+					"00",
+					...Array.from(messageBytes).map((byte: any) =>
+						byte.toString(16).padStart(2, "0")
+					),
+				].join("")
 		);
 	};
 	const paddedMessage = pkcs1v15Pad(data, n);
@@ -208,7 +210,7 @@ export async function preInit() {
 	console.debug("initializing dotnet");
 	const runtime = await dotnet
 		.withConfig({
-			pthreadPoolInitialSize: 16
+			pthreadPoolInitialSize: 16,
 		})
 		.withRuntimeOptions([
 			// jit functions quickly and jit more functions
@@ -237,7 +239,8 @@ export async function preInit() {
 						let res = await nativefetch(defaultUri + idx);
 						idx++;
 						if (!res.body) throw new Error("no body in fetch response");
-						return res.status === 200 && !(res.headers.get("content-type") || "").includes("text/html")
+						return res.status === 200 &&
+							!(res.headers.get("content-type") || "").includes("text/html")
 							? res.body.getReader()
 							: null;
 					};
@@ -317,7 +320,7 @@ export async function preInit() {
 				let h = await file.getFile();
 				console.log("got file cached", last);
 				return new Response(h.stream());
-			} catch { }
+			} catch {}
 			dl.download = "cross origin lol";
 			dl.href = args[0];
 			dl.click();
@@ -330,7 +333,7 @@ export async function preInit() {
 					let h = await file.getFile();
 					console.log("got file", last);
 					return new Response(h.stream());
-				} catch { }
+				} catch {}
 				await new Promise((r) => setTimeout(r, 100));
 			}
 		}
@@ -359,7 +362,8 @@ export async function preInit() {
 			return new Uint8Array(encrypted);
 		},
 		XXHash64_Fast: async (path: string) => {
-			if (!path.startsWith("/libsdl/")) throw new Error("can't hash things not in opfs");
+			if (!path.startsWith("/libsdl/"))
+				throw new Error("can't hash things not in opfs");
 			path = path.slice("/libsdl/".length);
 
 			let start = performance.now();
@@ -373,7 +377,7 @@ export async function preInit() {
 			console.debug("xxh64_fast:", path, (end - start).toFixed(1));
 
 			return { ret: bytes };
-		}
+		},
 	});
 
 	(self as any).wasm = {
@@ -465,8 +469,8 @@ function monitorMem(): () => void {
 	exports.CelesteLoader.WatchMemoryUsage((mem: number) => {
 		gameState.memory = mem;
 		return stop;
-	})
-	return () => stop = true;
+	});
+	return () => (stop = true);
 }
 
 export async function play() {

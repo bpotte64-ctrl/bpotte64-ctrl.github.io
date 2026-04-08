@@ -6,5 +6,7 @@ self.onmessage = ({ data: { buf } }) => {
 	hash.update(buf);
 	let out = hash.digest();
 
-	self.postMessage({ digest: out.toString(16).toUpperCase().padStart(16, "0") })
+	self.postMessage({
+		digest: out.toString(16).toUpperCase().padStart(16, "0"),
+	});
 };

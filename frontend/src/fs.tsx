@@ -42,7 +42,7 @@ export const TAR_TYPES = [
 ];
 
 export async function calculateXXH64(path: string): Promise<string> {
-	let split = path.split("/")
+	let split = path.split("/");
 	let dir = await recursiveGetDirectory(rootFolder, split.slice(0, -1));
 	let file = await dir.getFileHandle(split.at(-1)!);
 	let buf = await file.getFile().then((r) => r.arrayBuffer());
@@ -52,14 +52,14 @@ export async function calculateXXH64(path: string): Promise<string> {
 		worker.onmessage = ({ data }) => res(data.digest);
 		worker.onerror = (x) => rej(new Error(`failed to hash: ${x}`));
 	});
-	worker.postMessage({ buf, }, [buf]);
+	worker.postMessage({ buf }, [buf]);
 	let res = await promise;
 	worker.terminate();
 
 	return res;
 }
 export async function calculateCelesteHash(): Promise<string> {
-	return await calculateXXH64("CustomCeleste.dll")
+	return await calculateXXH64("CustomCeleste.dll");
 }
 
 export async function replaceHashes(hash: string) {

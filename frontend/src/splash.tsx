@@ -443,11 +443,12 @@ const Copy: Component<
 					(e) => e.name === "orig"
 				) as FileSystemDirectoryEntry;
 				let reader = orig.createReader();
-				reader.readEntries(async (entries: FileSystemEntry[]) => {
-					celesteExe = entries.find(
-						(e) => e.name === "Celeste.exe"
-					) as FileSystemFileEntry;
-				});
+				let subEntries = await new Promise<FileSystemEntry[]>((r) =>
+					reader.readEntries(r)
+				);
+				celesteExe = subEntries.find(
+					(e) => e.name === "Celeste.exe"
+				) as FileSystemFileEntry;
 				console.debug("found everest install");
 			} catch {
 				celesteExe = entries.find(
