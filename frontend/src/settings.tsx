@@ -1,7 +1,7 @@
 import { Switch } from "./ui/Switch";
 import { store } from "./store";
 import { TextField } from "./ui/TextField";
-import { analyticsEnabled } from "./analytics";
+import { analyticsEnabled, event } from "./analytics";
 
 export const Settings: Component<
 	{},
@@ -68,7 +68,7 @@ export const Settings: Component<
 					This instance of Webleste has analytics for figuring out how many people are affected by r58playz's random regressions.
 					We send an event on page load, when you finish providing assets (with what option you chose), when you finish patching (with whether you chose to install Everest), when you click the play button, and when you turn this off (but not after).
 				</div>
-				<Switch title="Enable Analytics" bind:on={use(store.analytics)} disabled={false} />
+				<Switch title="Enable Analytics" bind:on={use(store.analytics)} disabled={false} on:change={() => event("analytics-toggle", { enabled: store.analytics })} />
 			</>) : null}
 		</div>
 	);

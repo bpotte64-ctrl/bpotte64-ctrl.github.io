@@ -3,7 +3,7 @@ import { store } from "./store";
 let debug = console.debug;
 
 function processEvent(type: any, payload: any) {
-	if (!store.analytics && payload?.name !== "analytics-off") {
+	if (!store.analytics && payload?.name !== "analytics-toggle") {
 		return;
 	}
 	debug("sending", type, payload)
@@ -20,8 +20,3 @@ export function event(name: string, args?: any) {
 		umami.track(name, args);
 	} catch(err) { debug("failed", err) }
 }
-
-useChange(store.analytics, () => {
-	if (!store.analytics)
-		event("analytics-off");
-})
