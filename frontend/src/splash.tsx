@@ -231,6 +231,7 @@ const Intro: Component<
 					? `Extracting ${NAME} archive is unsupported`
 					: `Extract ${NAME} archive`}
 			</Button>
+			{/*
 			<Button
 				on:click={() => next("download")}
 				type="primary"
@@ -240,6 +241,7 @@ const Intro: Component<
 				<Icon icon={iconDownload} />
 				Download assets with Steam Login
 			</Button>
+			*/}
 		</div>
 	);
 };

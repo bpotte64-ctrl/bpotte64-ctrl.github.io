@@ -124,6 +124,7 @@ const TopBar: Component<
 					<Icon icon={iconDownload} />
 					<span>Mods</span>
 				</Button>
+				{/*
 				<Button
 					on:click={() => (this.steamOpen = true)}
 					icon="left"
@@ -149,6 +150,7 @@ const TopBar: Component<
 					</svg>
 					<span>Sync</span>
 				</Button>
+				*/}
 				<Button
 					on:click={() => (this.achievementsOpen = true)}
 					icon="full"
