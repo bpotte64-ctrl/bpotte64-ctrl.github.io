@@ -1,5 +1,5 @@
---- ../decomp/Celeste/NPC06_Badeline_Crying.cs	2024-05-17 02:12:37.000000000 -0400
-+++ celeste/Celeste/NPC06_Badeline_Crying.cs	2024-11-20 20:56:26.930729466 -0500
+--- ../decomp/Celeste/NPC06_Badeline_Crying.cs	2024-05-21 09:02:13.000000000 -0700
++++ celeste/Celeste/NPC06_Badeline_Crying.cs	2026-05-04 19:14:34.534229947 -0700
 @@ -109,7 +109,7 @@
  
  		private VertexLight light;

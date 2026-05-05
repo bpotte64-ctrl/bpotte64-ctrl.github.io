@@ -24,6 +24,8 @@ $(WASMOUT): $(wildcard celeste/**/*.*) Program.cs fna-wasm.csproj
 	dotnet build -c $(Profile)
 	cp -r public/* $(WWWROOT)
 	rm -rvf $(WWWROOT)/**/*.gz
+	@echo "Stripping pdb refs from blazor.boot.json..."
+	python3 -c "import json,sys; p='$(WWWROOT)/_framework/blazor.boot.json'; d=json.load(open(p)); d['resources'].pop('pdb', None); json.dump(d, open(p,'w'), separators=(',',':'))"
 
 
 $(VFSTARGET) $(VFSFILE): $(ASSETS)
