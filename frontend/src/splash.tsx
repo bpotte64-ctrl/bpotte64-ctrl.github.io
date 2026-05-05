@@ -26,7 +26,7 @@ import { LogView } from "./game";
 
 import iconFolderOpen from "@ktibow/iconset-material-symbols/folder-open-outline";
 import iconCloudUpload from "@ktibow/iconset-material-symbols/cloud-upload";
-import iconDownload from "@ktibow/iconset-material-symbols/download";
+//import iconDownload from "@ktibow/iconset-material-symbols/download";
 import iconEncrypted from "@ktibow/iconset-material-symbols/encrypted";
 import iconArchive from "@ktibow/iconset-material-symbols/archive";
 import iconUnarchive from "@ktibow/iconset-material-symbols/unarchive";
